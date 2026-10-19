@@ -1,10 +1,5 @@
 package hospital
 
-// Los estados son constantes tipadas (no strings sueltos): si alguien escribe
-// mal un estado, el compilador lo detecta. Cada tipo implementa fmt.Stringer
-// para imprimirse de forma legible con fmt.Println / %v.
-
-// PatientState indica dónde y cómo está un paciente.
 type PatientState int
 
 const (

@@ -2,8 +2,6 @@ package hospital
 
 import "fmt"
 
-// Hospital es la raíz del modelo: conoce a sus pacientes, salas, personal
-// e historial de episodios. Todos los campos son privados.
 type Hospital struct {
 	name     string
 	staff    []Attender // Persona B: doctores y camilleros, despachados por interfaz
@@ -12,7 +10,6 @@ type Hospital struct {
 	history  []EpisodeRecord // todos los episodios registrados (Persona B los agrega)
 }
 
-// NewHospital crea un hospital vacío.
 func NewHospital(name string) *Hospital {
 	return &Hospital{name: name}
 }
@@ -119,16 +116,7 @@ func (h *Hospital) PatientsInHallway() []*Patient {
 	return result
 }
 
-// SevereReport (5.4) cruza dos fuentes: los pacientes con nivel Severe y el
-// historial de episodios del hospital. Devuelve paciente -> número de episodios.
-//
-// Por qué un mapa: la consulta es "dado un paciente, ¿cuántos episodios?",
-// que es exactamente una búsqueda por clave. Contar con un mapa es O(n) en una
-// sola pasada; con un slice habría que buscar el paciente en cada episodio.
-// Un paciente Severe sin episodios aparece con 0 (sigue siendo de interés).
-//
-// Nota: history representa la jornada actual del hospital, por eso se cuentan
-// todos los episodios registrados.
+
 func (h *Hospital) SevereReport() map[*Patient]int {
 	report := make(map[*Patient]int)
 	for _, p := range h.patients {
