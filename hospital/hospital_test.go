@@ -16,8 +16,7 @@ func mustPatient(t *testing.T, id, name string, level NarcolepsyLevel) *Patient 
 	return p
 }
 
-// newTestHospital crea un hospital con nRooms salas de capacidad 1
-// (números 101, 102, ...) y admite los pacientes dados.
+
 func newTestHospital(t *testing.T, nRooms int, patients ...*Patient) *Hospital {
 	t.Helper()
 	h := NewHospital("Hospital de prueba")
@@ -38,7 +37,6 @@ func newTestHospital(t *testing.T, nRooms int, patients ...*Patient) *Hospital {
 	return h
 }
 
-// --- 5.3 AssignRoom: hay sala libre (test obligatorio 1) ---
 
 func TestAssignRoom_FreeRoom(t *testing.T) {
 	p := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
@@ -65,7 +63,6 @@ func TestAssignRoom_FreeRoom(t *testing.T) {
 	}
 }
 
-// --- 5.3 AssignRoom: no hay sala (test obligatorio 2) ---
 
 func TestAssignRoom_NoRoomAvailable(t *testing.T) {
 	p1 := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
@@ -93,8 +90,7 @@ func TestAssignRoom_NoRoomAvailable(t *testing.T) {
 	}
 }
 
-// Escenario de la sección 6: alguien despierta, libera la sala y el
-// paciente del pasillo la recibe.
+
 func TestAssignRoom_AfterWakeUpReleasesRoom(t *testing.T) {
 	p1 := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
 	p2 := mustPatient(t, "P-002", "Wilfrido Berrio", Severe)
@@ -162,7 +158,6 @@ func TestPatientsInHallway(t *testing.T) {
 	}
 }
 
-// --- 5.4 SevereReport ---
 
 func TestSevereReport(t *testing.T) {
 	mild := mustPatient(t, "P-001", "Mild", Mild)
@@ -170,8 +165,7 @@ func TestSevereReport(t *testing.T) {
 	s2 := mustPatient(t, "P-003", "Severe dos", Severe)
 	h := newTestHospital(t, 0, mild, s1, s2)
 
-	// RegisterEpisode es de Persona B; mientras tanto el test (que está
-	// dentro del paquete) carga el historial directamente.
+	
 	h.history = []EpisodeRecord{
 		{patient: s1}, {patient: s1}, {patient: s1},
 		{patient: mild},
