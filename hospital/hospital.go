@@ -30,79 +30,6 @@ func NewHospital(name string) *Hospital {
 // Name devuelve el nombre del hospital.
 func (h *Hospital) Name() string { return h.name }
 
-func (h *Hospital) HireDoctor(d *Doctor) error {
-	if h == nil {
-		return fmt.Errorf("el hospital es nil")
-	}
-
-	if d == nil {
-		return fmt.Errorf("el doctor es nil")
-	}
-
-	if d.hospital != h {
-		return fmt.Errorf("el doctor no pertenece a este hospital")
-	}
-
-	// Evitar registrar dos veces al mismo doctor.
-	for _, member := range h.staff {
-		if member.ID() == d.ID() {
-			return fmt.Errorf("ya existe personal con ID %s", d.ID())
-		}
-	}
-
-	h.staff = append(h.staff, d)
-	return nil
-}
-
-func (h *Hospital) HireOrderly(o *Orderly) error {
-	if h == nil {
-		return fmt.Errorf("el hospital es nil")
-	}
-
-	if o == nil {
-		return fmt.Errorf("el camillero es nil")
-	}
-
-	if o.hospital != h {
-		return fmt.Errorf("el camillero no pertenece a este hospital")
-	}
-
-	for _, member := range h.staff {
-		if member.ID() == o.ID() {
-			return fmt.Errorf("ya existe personal con ID %s", o.ID())
-		}
-	}
-
-	h.staff = append(h.staff, o)
-	return nil
-}
-
-// RegisterEpisode agrega un episodio al historial del hospital.
-func (h *Hospital) RegisterEpisode(ep EpisodeRecord) error {
-	if h == nil {
-		return fmt.Errorf("el hospital es nil")
-	}
-
-	if ep.Patient() == nil {
-		return ErrNilPatient
-	}
-
-	if ep.AttendedBy() == nil {
-		return fmt.Errorf("el episodio no tiene personal asignado")
-	}
-
-	if !h.isAdmitted(ep.Patient()) {
-		return fmt.Errorf(
-			"%w: %s",
-			ErrPatientNotAdmitted,
-			ep.Patient().ID(),
-		)
-	}
-
-	h.history = append(h.history, ep)
-	return nil
-}
-
 // Patients y Rooms devuelven copias para que main pueda recorrerlos
 // sin poder alterar las listas internas del hospital.
 // Patients devuelve una copia de los pacientes admitidos.
@@ -227,7 +154,6 @@ func (h *Hospital) PatientsInHallway() []*Patient {
 	return result
 }
 
-<<<<<<< HEAD
 // SevereReport (5.4) cruza dos fuentes: los pacientes con nivel Severe y el
 // historial de episodios del hospital. Devuelve paciente -> número de episodios.
 //
@@ -238,8 +164,6 @@ func (h *Hospital) PatientsInHallway() []*Patient {
 //
 // Nota: history representa la jornada actual del hospital, por eso se cuentan
 // todos los episodios registrados.
-=======
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 func (h *Hospital) SevereReport() map[*Patient]int {
 	h.mu.Lock()
 	defer h.mu.Unlock()

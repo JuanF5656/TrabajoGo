@@ -1,13 +1,12 @@
 # Hospital de los Costeños con Narcolepsia
 
-<<<<<<< HEAD
 Taller de Programación Orientada a Objetos — Universidad EIA. Escrito en Go 1.21
 usando solo la librería estándar.
 
 ## Integrantes
 
 - Thomas Andres Gonzalez Aguilar
-- Juan Felipe [COMPLETAR: apellido]
+- Juan Felipe Atehortua
 
 ## Cómo ejecutarlo
 
@@ -32,58 +31,10 @@ hospital/
   episode.go             EpisodeRecord: registro inmutable de un episodio
   hospital.go            Hospital: personal, despacho, consultas 5.1 a 5.4
   hospital_test.go       Tests
-=======
-## Integrantes
-
-- **Persona A:** Thomas Gonzales
-- **Persona B:** Juan Felipe Atehortua
-
-## Descripción
-
-Sistema de gestión hospitalaria desarrollado en Go que simula la atención de pacientes con narcolepsia. Permite gestionar pacientes, doctores, camilleros, habitaciones y episodios de atención, incluyendo situaciones en las que no hay habitaciones disponibles.
-
-El proyecto aplica conceptos de programación orientada a objetos mediante composición, interfaces, encapsulación y manejo de errores.
-
-## Requisitos
-
-- Go 1.21 o superior.
-
-## Ejecución
-
-Desde la raíz del repositorio, ejecutar:
-
-```bash
-go run .
-```
-
-El programa construye un escenario de demostración e imprime los resultados de las operaciones realizadas.
-
-## Pruebas
-
-Para ejecutar las pruebas de todos los paquetes:
-
-```bash
-go test ./...
-```
-
-## Verificaciones de código
-
-Para aplicar el formato estándar de Go:
-
-```bash
-gofmt -w .
-```
-
-Para analizar posibles errores y problemas comunes:
-
-```bash
-go vet ./...
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 ```
 
 ## Decisiones de diseño
 
-<<<<<<< HEAD
 - **Composición con `Person`.** Patient, Doctor y Orderly embeben `Person` en vez de
   repetir id, nombre y edad. Los campos son privados y se leen con getters.
 - **Despacho polimórfico con `DispatchSleepAttack`.** El hospital guarda su personal
@@ -163,37 +114,3 @@ La regla era separar lógica y vista. El paquete `hospital` no importa `net/http
   dentro de un `sync.Mutex` del servidor web (el mutex interno del hospital no cubre
   secuencias de varias llamadas).
 - Se comprueba con `git diff --stat HEAD -- hospital/`, que no muestra cambios.
-=======
-- **Composición mediante embedding:** `Patient`, `Doctor` y `Orderly` reutilizan la estructura `Person`, heredando su información y sus métodos públicos sin duplicar código.
-- **Polimorfismo mediante interfaces:** la interfaz `Attender` define las operaciones comunes del personal encargado de atender pacientes. El hospital puede almacenar y gestionar doctores y camilleros a través de una misma interfaz.
-- **Encapsulación:** los campos internos de las entidades no se exportan directamente. El acceso a la información y la modificación del estado se realizan mediante métodos.
-- **Manejo de errores:** las operaciones que pueden fallar devuelven errores que permiten identificar situaciones como pacientes inválidos o falta de habitaciones disponibles.
-- **Separación de responsabilidades:** el paquete `hospital` contiene las entidades y la lógica del dominio, mientras que `main.go` construye el escenario de demostración y presenta los resultados.
-- **Registro de episodios:** cada atención genera un `EpisodeRecord` con información del paciente, el personal responsable, la ubicación, la fecha y la habitación asignada, cuando existe.
-- **Gestión de habitaciones:** el hospital asigna habitaciones disponibles y permite liberarlas cuando corresponde. Si no hay disponibilidad, el paciente puede permanecer en el pasillo hasta que se le pueda asignar una habitación.
-
-## Escenario de demostración
-
-El programa realiza las siguientes operaciones:
-
-1. Crea un hospital y registra dos doctores y un camillero.
-2. Registra tres habitaciones y admite cinco pacientes.
-3. Simula cuatro atenciones en diferentes ubicaciones.
-4. Demuestra qué ocurre cuando no hay habitaciones disponibles: el paciente permanece en el pasillo y la atención queda registrada.
-5. Despierta a un paciente y libera su habitación.
-6. Atiende nuevamente al paciente que estaba en el pasillo y le asigna la habitación liberada.
-7. Consulta los pacientes que permanecen en el pasillo, el estado de las habitaciones, el informe de casos severos y los episodios registrados por cada integrante del personal.
-
-## Estructura general del proyecto
-
-- **`main.go`:** punto de entrada del programa y escenario de demostración.
-- **`hospital/person.go`:** información y métodos comunes de las personas.
-- **`hospital/patient.go`:** estado, ubicación, nivel de narcolepsia y comportamiento de los pacientes.
-- **`hospital/doctor.go`:** atención médica y gestión de pacientes asignados.
-- **`hospital/orderly.go`:** atención realizada por el camillero.
-- **`hospital/room.go`:** creación, ocupación y liberación de habitaciones.
-- **`hospital/episode_record.go`:** registro y presentación de los episodios de atención.
-- **`hospital/hospital.go`:** administración del personal, los pacientes, las habitaciones y el historial del hospital.
-
-
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d

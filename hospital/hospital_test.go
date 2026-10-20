@@ -16,11 +16,8 @@ func mustPatient(t *testing.T, id, name string, level NarcolepsyLevel) *Patient 
 	return p
 }
 
-<<<<<<< HEAD
 // newTestHospital crea un hospital con nRooms salas de capacidad 1
 // (números 101, 102, ...) y admite los pacientes dados.
-=======
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 func newTestHospital(t *testing.T, nRooms int, patients ...*Patient) *Hospital {
 	t.Helper()
 	h := NewHospital("Hospital de prueba")
@@ -41,11 +38,8 @@ func newTestHospital(t *testing.T, nRooms int, patients ...*Patient) *Hospital {
 	return h
 }
 
-<<<<<<< HEAD
 // --- 5.3 AssignRoom: hay sala libre (test obligatorio 1) ---
 
-=======
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 func TestAssignRoom_FreeRoom(t *testing.T) {
 	p := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
 	h := newTestHospital(t, 2, p)
@@ -71,11 +65,8 @@ func TestAssignRoom_FreeRoom(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
 // --- 5.3 AssignRoom: no hay sala (test obligatorio 2) ---
 
-=======
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 func TestAssignRoom_NoRoomAvailable(t *testing.T) {
 	p1 := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
 	p2 := mustPatient(t, "P-002", "Wilfrido Berrio", Severe)
@@ -102,11 +93,8 @@ func TestAssignRoom_NoRoomAvailable(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
 // Escenario de la sección 6: alguien despierta, libera la sala y el
 // paciente del pasillo la recibe.
-=======
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 func TestAssignRoom_AfterWakeUpReleasesRoom(t *testing.T) {
 	p1 := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
 	p2 := mustPatient(t, "P-002", "Wilfrido Berrio", Severe)
@@ -174,22 +162,16 @@ func TestPatientsInHallway(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD
 // --- 5.4 SevereReport ---
 
-=======
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 func TestSevereReport(t *testing.T) {
 	mild := mustPatient(t, "P-001", "Mild", Mild)
 	s1 := mustPatient(t, "P-002", "Severe uno", Severe)
 	s2 := mustPatient(t, "P-003", "Severe dos", Severe)
 	h := newTestHospital(t, 0, mild, s1, s2)
 
-<<<<<<< HEAD
 	// Se carga el historial directamente (el test está dentro del paquete)
 	// para probar SevereReport sin depender de Attend.
-=======
->>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 	h.history = []EpisodeRecord{
 		{patient: s1}, {patient: s1}, {patient: s1},
 		{patient: mild},
