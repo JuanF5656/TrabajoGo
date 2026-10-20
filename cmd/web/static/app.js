@@ -19,7 +19,8 @@
      6. Actions ..... ataque, despertar y asignar sala (hablan con el backend)
      7. Interact .... clics, doble clic y arrastrar-y-soltar (drag & drop)
      8. FX .......... contadores animados y confeti
-     9. Arranque .... refresh() y conexión de los botones
+     9. Carnival .... modo simulación: ataques aleatorios desde el navegador
+    10. Arranque .... refresh() y conexión de los botones
    ===================================================================== */
 
 /* =====================================================================
@@ -544,6 +545,7 @@ const Actions = {
 
   async reset() {
     try {
+      Carnival.stop();                         // si el carnaval estaba corriendo, se detiene
       await Api.post("/api/reset");
       Store.reset();
       Toast.show("info", "Escenario reiniciado.");
@@ -784,6 +786,82 @@ const Confetti = {
 };
 
 /* =====================================================================
+   MODO CARNAVAL — simulación hecha en el navegador
+   Cada 2 a 3 segundos elige al azar un paciente despierto y una zona, y llama
+   a Actions.attack (o sea, al mismo POST /api/attack que usa un clic normal).
+   No hay un "bucle" ni setInterval: cada vuelta (tick) espera a que termine el
+   ataque anterior y recién entonces programa la siguiente con setTimeout.
+   Así nunca se cruzan dos ataques y el cambio de velocidad se nota de inmediato.
+   Se detiene solo cuando ya nadie está despierto.
+   ===================================================================== */
+const Carnival = {
+  running: false,
+  timer: 0,
+  speed: 3,                                   // 1 (muy lenta) ... 5 (muy rápida)
+  LABELS: ["Muy lenta", "Lenta", "Normal", "Rápida", "Muy rápida"],
+  FACTOR: [1.7, 1.3, 1, 0.7, 0.45],           // multiplica la espera base de 2 a 3 s
+
+  init() {
+    $("#carnival-btn").addEventListener("click", () => (this.running ? this.stop() : this.start()));
+    const slider = $("#carnival-speed");
+    slider.addEventListener("input", () => this.setSpeed(Number(slider.value)));
+    this.setSpeed(this.speed);
+  },
+
+  setSpeed(n) {
+    this.speed = n;
+    const slider = $("#carnival-speed");
+    const label = this.LABELS[n - 1];
+    slider.style.setProperty("--fill", ((n - 1) / 4) * 100 + "%");   // relleno de la barra
+    slider.setAttribute("aria-valuetext", label);
+    $("#carnival-speed-label").textContent = label;
+  },
+
+  waitMs() { return rand(2000, 3000) * this.FACTOR[this.speed - 1]; },
+
+  start() {
+    if (!Store.awake().length) { Toast.show("info", "Nadie está despierto: despierta a alguien para empezar el carnaval."); return; }
+    this.running = true;
+    this.paint();
+    Toast.show("info", "¡Arranca el carnaval! Pausa cuando quieras.");
+    this.schedule();
+  },
+
+  // reason: texto opcional para avisar por qué se detuvo
+  stop(reason) {
+    clearTimeout(this.timer);
+    const was = this.running;
+    this.running = false;
+    this.paint();
+    if (was && reason) Toast.show("info", reason);
+  },
+
+  schedule() {
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.tick(), this.waitMs());
+  },
+
+  async tick() {
+    if (!this.running) return;
+    const awake = Store.awake();
+    if (!awake.length) { this.stop("Todos los pacientes están dormidos: el carnaval terminó solo."); return; }
+    await Actions.attack(pick(awake).id, pick(ZONES).key);          // paciente y zona al azar
+    if (!this.running) return;                                      // lo pausaron mientras tanto
+    if (!Store.awake().length) { this.stop("Todos los pacientes están dormidos: el carnaval terminó solo."); return; }
+    this.schedule();
+  },
+
+  // Botón: texto, ícono y aria-pressed según esté corriendo o en pausa.
+  paint() {
+    const btn = $("#carnival-btn");
+    btn.setAttribute("aria-pressed", String(this.running));
+    btn.classList.toggle("running", this.running);
+    btn.setAttribute("aria-label", this.running ? "Pausar el modo carnaval" : "Iniciar el modo carnaval: ataques de sueño aleatorios");
+    btn.replaceChildren(icon(this.running ? "pause" : "play"), el("span", { text: this.running ? "Pausar carnaval" : "Modo carnaval" }));
+  },
+};
+
+/* =====================================================================
    9. ARRANQUE — refresh() es el único sitio que lee del servidor
    ===================================================================== */
 async function refresh() {
@@ -804,5 +882,6 @@ async function refresh() {
 }
 
 Plan.init();
+Carnival.init();
 $("#reset-btn").addEventListener("click", () => Actions.reset());
 refresh();

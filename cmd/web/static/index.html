@@ -104,6 +104,16 @@
           </ul>
         </div>
         <p class="hint" id="plan-hint">Cargando el hospital…</p>
+        <!-- Modo carnaval: ataques aleatorios cada 2 a 3 s (se ajusta con la velocidad) -->
+        <div class="carnival" role="group" aria-label="Modo carnaval">
+          <button id="carnival-btn" type="button" class="btn carnival-btn" aria-pressed="false" aria-label="Iniciar el modo carnaval: ataques de sueño aleatorios">
+            <svg class="ico" aria-hidden="true"><use href="#i-play"/></svg><span>Modo carnaval</span>
+          </button>
+          <label class="speed" for="carnival-speed"><span>Velocidad</span>
+            <input id="carnival-speed" type="range" min="1" max="5" step="1" value="3" aria-valuetext="Normal">
+          </label>
+          <span class="speed-label" id="carnival-speed-label" aria-hidden="true">Normal</span>
+        </div>
         <div class="plan" id="plan">
           <div class="avatars" id="avatars"></div>
         </div>
