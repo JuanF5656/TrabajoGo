@@ -7,7 +7,7 @@ usando solo la librería estándar.
 ## Integrantes
 
 - Thomas Andres Gonzalez Aguilar
-- Juan Felipe [COMPLETAR: apellido]
+- Juan Felipe Atehortua Vergara
 
 ## Cómo ejecutarlo
 
