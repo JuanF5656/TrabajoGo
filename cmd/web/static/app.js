@@ -18,7 +18,8 @@
      5. Panel ....... detalle del paciente seleccionado y lista de personal
      6. Actions ..... ataque, despertar y asignar sala (hablan con el backend)
      7. Interact .... clics, doble clic y arrastrar-y-soltar (drag & drop)
-     8. Arranque .... refresh() y conexión de los botones
+     8. FX .......... contadores animados y confeti
+     9. Arranque .... refresh() y conexión de los botones
    ===================================================================== */
 
 /* =====================================================================
@@ -526,6 +527,8 @@ const Actions = {
     try {
       const d = await Api.post("/api/assign", { patientId: id });
       ok = true;
+      // Confeti sobre la sala cuando el avatar ya llegó a su cama.
+      setTimeout(() => Confetti.burstAt(Plan.roomEls.get(d.room)), reducedMotion() ? 0 : 700);
       if (targetRoom != null && d.room !== targetRoom) {
         Toast.show("warn", `El hospital asignó la sala ${d.room} (siempre da la primera disponible).`);
       } else {
@@ -671,7 +674,117 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* =====================================================================
-   8. ARRANQUE — refresh() es el único sitio que lee del servidor
+   FX — contadores animados y confeti carnavalero
+   Todo respeta prefers-reduced-motion: si el usuario pidió menos
+   movimiento, los números cambian de golpe y no hay confeti.
+   ===================================================================== */
+const Counters = {
+  shown: {},                     // clave -> número que se está mostrando
+
+  // Calcula los números a partir de lo que respondió el servidor.
+  compute() {
+    const { patients, rooms } = Store.data;
+    return {
+      awake: patients.filter((p) => p.state === "Awake").length,
+      hallway: patients.filter((p) => p.state === "AsleepInHallway").length,
+      bed: patients.filter((p) => p.state === "AsleepInBed").length,
+      freeRooms: rooms.filter((r) => r.state === "Available").length,
+      episodes: Counters.episodeCount(),
+    };
+  },
+
+  // Episodios del día: suma lo que cada doctor reporta en MyEpisodes (5.2).
+  episodeCount() {
+    return Store.queries.episodesByDoctor.reduce((n, d) => n + d.episodes.length, 0);
+  },
+
+  update() {
+    const values = this.compute();
+    for (const [key, value] of Object.entries(values)) {
+      const node = $(`.counter[data-key="${key}"] .c-num`);
+      if (!node) continue;
+      const from = this.shown[key] === undefined ? value : this.shown[key];
+      this.shown[key] = value;
+      this.tween(node, from, value);
+    }
+  },
+
+  // Cuenta de un número a otro en ~450 ms (easeOutCubic) con requestAnimationFrame.
+  tween(node, from, to) {
+    cancelAnimationFrame(node._raf);
+    if (from === to || reducedMotion()) { node.textContent = String(to); return; }
+    node.classList.remove("bump");
+    void node.offsetWidth;
+    node.classList.add("bump");
+    const t0 = performance.now(), DURATION = 450;
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / DURATION);
+      const eased = 1 - Math.pow(1 - k, 3);
+      node.textContent = String(Math.round(from + (to - from) * eased));
+      if (k < 1) node._raf = requestAnimationFrame(step);
+    };
+    node._raf = requestAnimationFrame(step);
+  },
+};
+
+// Mini explosión de confeti en un <canvas> fijo sobre toda la pantalla.
+const Confetti = {
+  COLORS: ["#ff6b57", "#ffc93c", "#0fa3b1", "#ff4fa3", "#7a5cff", "#2fd1b0", "#ffffff"],
+  parts: [],
+  raf: 0,
+
+  burst(x, y, amount = 90) {
+    if (reducedMotion()) return;
+    const canvas = $("#confetti");
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    this.ctx = canvas.getContext("2d");
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    for (let i = 0; i < amount; i++) {
+      this.parts.push({
+        x, y,
+        vx: rand(-7, 7), vy: rand(-13, -3),      // sale disparado hacia arriba y a los lados
+        size: rand(5, 10), rot: rand(0, 6.28), vr: rand(-.3, .3),
+        color: pick(this.COLORS), round: Math.random() < .3,
+        life: rand(70, 110),                      // cuadros que vive (~1.5 s)
+      });
+    }
+    if (!this.raf) this.raf = requestAnimationFrame(() => this.frame());
+  },
+
+  frame() {
+    const ctx = this.ctx;
+    ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+    this.parts = this.parts.filter((p) => p.life > 0 && p.y < window.innerHeight + 20);
+    for (const p of this.parts) {
+      p.vy += 0.38;                               // gravedad
+      p.vx *= 0.99;                               // un poco de roce con el aire
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.life--;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.min(1, p.life / 25);
+      ctx.fillStyle = p.color;
+      if (p.round) { ctx.beginPath(); ctx.arc(0, 0, p.size / 2, 0, 6.28); ctx.fill(); }
+      else ctx.fillRect(-p.size / 2, -p.size / 3, p.size, p.size * 0.66);
+      ctx.restore();
+    }
+    if (this.parts.length) this.raf = requestAnimationFrame(() => this.frame());
+    else { this.raf = 0; ctx.clearRect(0, 0, window.innerWidth, window.innerHeight); }
+  },
+
+  // Confeti saliendo del centro de un elemento (por ejemplo la sala recién asignada).
+  burstAt(element) {
+    if (!element) return;
+    const r = element.getBoundingClientRect();
+    this.burst(r.left + r.width / 2, r.top + r.height / 2);
+  },
+};
+
+/* =====================================================================
+   9. ARRANQUE — refresh() es el único sitio que lee del servidor
    ===================================================================== */
 async function refresh() {
   try {
@@ -684,6 +797,7 @@ async function refresh() {
     Plan.update(state.patients, state.rooms);
     Panel.renderStaff(state.staff);
     Interact.sync();
+    Counters.update();
   } catch (err) {
     Toast.show("error", "No se pudo cargar el estado: " + err.message);
   }

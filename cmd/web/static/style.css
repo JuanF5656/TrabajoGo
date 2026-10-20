@@ -458,3 +458,27 @@ select, input[type="text"] {
 .toast.leaving { animation: toast-out .25s ease forwards; }
 @keyframes toast-in { from { opacity: 0; transform: translateY(18px) scale(.94); } to { opacity: 1; transform: none; } }
 @keyframes toast-out { to { opacity: 0; transform: translateX(30px); } }
+
+/* =====================================================================
+   7. Contadores y confeti
+   ===================================================================== */
+.counters { display: grid; gap: 12px; margin: 4px 0 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 640px) { .counters { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.counter {
+  display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 18px;
+  background: var(--glass); border: 1px solid var(--glass-border); box-shadow: var(--shadow);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+}
+.c-ico { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 12px; }
+.c-ico .ico { width: 22px; height: 22px; }
+.c-ok { background: var(--ok-bg); color: var(--ok-fg); }
+.c-bad { background: var(--bad-bg); color: var(--bad-fg); }
+.c-info { background: var(--info-bg); color: var(--info-fg); }
+.c-sea { background: rgba(15, 163, 177, .18); color: var(--accent); }
+.c-sun { background: var(--warn-bg); color: var(--warn-fg); }
+.c-num { font-size: 1.7rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.c-num.bump { animation: bump .45s ease; }
+@keyframes bump { 40% { transform: scale(1.22); } }
+.c-lbl { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+
+#confetti { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 150; pointer-events: none; }

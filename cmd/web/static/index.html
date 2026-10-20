@@ -84,6 +84,15 @@
   </header>
 
   <main id="main">
+    <!-- Contadores animados: los calcula app.js a partir de /api/state y /api/queries -->
+    <section class="counters" aria-label="Resumen del hospital">
+      <div class="counter" data-key="awake"><span class="c-ico c-ok"><svg class="ico" aria-hidden="true"><use href="#i-sun"/></svg></span><div><div class="c-num">0</div><div class="c-lbl">Despiertos</div></div></div>
+      <div class="counter" data-key="hallway"><span class="c-ico c-bad"><svg class="ico" aria-hidden="true"><use href="#i-alert"/></svg></span><div><div class="c-num">0</div><div class="c-lbl">En el pasillo</div></div></div>
+      <div class="counter" data-key="bed"><span class="c-ico c-info"><svg class="ico" aria-hidden="true"><use href="#i-bed"/></svg></span><div><div class="c-num">0</div><div class="c-lbl">En cama</div></div></div>
+      <div class="counter" data-key="freeRooms"><span class="c-ico c-sea"><svg class="ico" aria-hidden="true"><use href="#i-door"/></svg></span><div><div class="c-num">0</div><div class="c-lbl">Salas libres</div></div></div>
+      <div class="counter" data-key="episodes"><span class="c-ico c-sun"><svg class="ico" aria-hidden="true"><use href="#i-clip"/></svg></span><div><div class="c-num">0</div><div class="c-lbl">Episodios del día</div></div></div>
+    </section>
+
     <div class="layout">
       <section class="panel glass plan-panel" aria-labelledby="plan-title">
         <div class="panel-head">
@@ -113,6 +122,7 @@
     </div>
   </main>
 
+  <canvas id="confetti" aria-hidden="true"></canvas>
   <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 
   <script src="app.js"></script>
