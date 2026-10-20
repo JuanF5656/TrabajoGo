@@ -16,4 +16,8 @@ var (
 	ErrPatientAlreadyInRoom   = errors.New("patient is already in this room")
 	ErrPatientNotInRoom       = errors.New("patient is not in this room")
 	ErrNoRoomAvailable        = errors.New("no room available")
+	ErrNoStaffAvailable       = errors.New("no staff available")
+	ErrInvalidStaff           = errors.New("invalid staff data")
+	ErrStaffAlreadyHired      = errors.New("staff member already hired")
+	ErrNotHired               = errors.New("staff member is not hired by a hospital")
 )

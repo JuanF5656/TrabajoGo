@@ -1,13 +1,17 @@
 package hospital
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type Hospital struct {
-	name     string
-	staff    []Attender // Persona B: doctores y camilleros, despachados por interfaz
-	patients []*Patient
-	rooms    []*Room
-	history  []EpisodeRecord // todos los episodios registrados (Persona B los agrega)
+	name      string
+	staff     []Attender // Persona B: doctores y camilleros, despachados por interfaz
+	patients  []*Patient
+	rooms     []*Room
+	history   []EpisodeRecord // todos los episodios registrados (Persona B los agrega)
+	nextStaff int             // índice (round-robin) desde donde DispatchSleepAttack busca personal
 }
 
 func NewHospital(name string) *Hospital {
@@ -154,4 +158,72 @@ func (h *Hospital) RegisterEpisode(ep EpisodeRecord) error {
 	}
 	h.history = append(h.history, ep)
 	return nil
+}
+
+// ---------------------------------------------------------------------
+// Personal y despacho
+// ---------------------------------------------------------------------
+
+// hireable lo implementan Doctor y Orderly para saber a qué hospital
+// pertenecen. Es privada: quien implemente Attender desde afuera no la necesita.
+type hireable interface{ setHospital(h *Hospital) }
+
+// Hire contrata a un miembro del personal. No se contrata dos veces el mismo id.
+func (h *Hospital) Hire(a Attender) error {
+	if a == nil {
+		return fmt.Errorf("%w: attender is nil", ErrInvalidStaff)
+	}
+	for _, s := range h.staff {
+		if s.ID() == a.ID() {
+			return fmt.Errorf("%w: %s", ErrStaffAlreadyHired, a.ID())
+		}
+	}
+	h.staff = append(h.staff, a)
+	if e, ok := a.(hireable); ok {
+		e.setHospital(h)
+	}
+	return nil
+}
+
+// DispatchSleepAttack despacha a quien esté disponible para atender el ataque
+// de p en location. Recorre el personal como []Attender, sin saber si es doctor
+// o camillero, y reparte en round-robin (empieza donde se quedó la vez anterior)
+// para que no atienda siempre el mismo. Si nadie está disponible devuelve
+// ErrNoStaffAvailable. Si no hay sala, el episodio igual se registra y el error
+// devuelto envuelve ErrNoRoomAvailable.
+func (h *Hospital) DispatchSleepAttack(p *Patient, location string) (EpisodeRecord, error) {
+	n := len(h.staff)
+	for i := 0; i < n; i++ {
+		idx := (h.nextStaff + i) % n
+		if h.staff[idx].Available() {
+			h.nextStaff = (idx + 1) % n
+			return h.staff[idx].Attend(p, location)
+		}
+	}
+	return EpisodeRecord{}, ErrNoStaffAvailable
+}
+
+// handleSleepAttack es la lógica común de Doctor.Attend y Orderly.Attend:
+// duerme al paciente, intenta asignarle sala y registra el episodio.
+// Si no hay sala devuelve el episodio (sin sala) junto con ErrNoRoomAvailable.
+func (h *Hospital) handleSleepAttack(by Attender, p *Patient, location string) (EpisodeRecord, error) {
+	if p == nil {
+		return EpisodeRecord{}, ErrNilPatient
+	}
+	if !h.isAdmitted(p) {
+		return EpisodeRecord{}, fmt.Errorf("%w: %s", ErrPatientNotAdmitted, p.ID())
+	}
+	if err := p.SufferSleepAttack(location); err != nil {
+		return EpisodeRecord{}, err
+	}
+	where := p.Location() // ya normalizada por SufferSleepAttack
+	room, roomErr := h.AssignRoom(p)
+	if roomErr != nil && !errors.Is(roomErr, ErrNoRoomAvailable) {
+		return EpisodeRecord{}, roomErr
+	}
+	ep := newEpisodeRecord(h.nextEpisodeID(), p, by, where, room)
+	if err := h.RegisterEpisode(ep); err != nil {
+		return EpisodeRecord{}, err
+	}
+	return ep, roomErr
 }
