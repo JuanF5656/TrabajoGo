@@ -3,6 +3,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"sort"
@@ -18,7 +19,28 @@ func check(err error) {
 	}
 }
 
+// printSevereReport imprime SevereReport. El mapa no tiene orden: se ordenan
+// los pacientes por ID para que la salida sea siempre la misma.
+func printSevereReport(h *hospital.Hospital) {
+	report := h.SevereReport()
+	severe := make([]*hospital.Patient, 0, len(report))
+	for p := range report {
+		severe = append(severe, p)
+	}
+	sort.Slice(severe, func(i, j int) bool { return severe[i].ID() < severe[j].ID() })
+	for _, p := range severe {
+		fmt.Printf("%s %s: %d episodio(s)\n", p.ID(), p.Name(), report[p])
+	}
+}
+
 func main() {
+	sim := flag.Bool("sim", false, "ejecuta la simulación concurrente en vez del escenario")
+	flag.Parse()
+	if *sim {
+		runSimulation()
+		return
+	}
+
 	h := hospital.NewHospital("Hospital de los Costeños con Narcolepsia")
 
 	// Personal: 2 doctores y 1 camillero, todos guardados como Attender.
@@ -95,18 +117,8 @@ func main() {
 		fmt.Printf("Después de la reasignación: %s ahora está en %s\n", waiting.Name(), room)
 	}
 
-	// El mapa no tiene orden: se ordenan los pacientes por ID para que la
-	// salida sea siempre la misma.
 	fmt.Println("\n== 5.4 Reporte de severidad ==")
-	report := h.SevereReport()
-	severe := make([]*hospital.Patient, 0, len(report))
-	for p := range report {
-		severe = append(severe, p)
-	}
-	sort.Slice(severe, func(i, j int) bool { return severe[i].ID() < severe[j].ID() })
-	for _, p := range severe {
-		fmt.Printf("%s %s: %d episodio(s)\n", p.ID(), p.Name(), report[p])
-	}
+	printSevereReport(h)
 
 	fmt.Println("\n== Información adicional: salas ==")
 	for _, r := range h.Rooms() {

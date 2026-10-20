@@ -3,6 +3,7 @@ package hospital
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 // Hospital es la raíz del modelo: conoce a sus pacientes, salas, personal
@@ -14,6 +15,11 @@ type Hospital struct {
 	rooms     []*Room
 	history   []EpisodeRecord // todos los episodios registrados
 	nextStaff int             // índice (round-robin) desde donde DispatchSleepAttack busca personal
+
+	// mu protege todo el estado mutable. Los métodos públicos lo toman; los
+	// internos (assignRoom, registerEpisode...) asumen que ya está tomado, para
+	// no bloquearse a sí mismos (sync.Mutex no es reentrante).
+	mu sync.Mutex
 }
 
 // NewHospital crea un hospital vacío.
@@ -28,6 +34,9 @@ func (h *Hospital) Name() string { return h.name }
 // sin poder alterar las listas internas del hospital.
 // Patients devuelve una copia de los pacientes admitidos.
 func (h *Hospital) Patients() []*Patient {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	out := make([]*Patient, len(h.patients))
 	copy(out, h.patients)
 	return out
@@ -35,6 +44,9 @@ func (h *Hospital) Patients() []*Patient {
 
 // Rooms devuelve una copia de las salas registradas (ver Patients).
 func (h *Hospital) Rooms() []*Room {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	out := make([]*Room, len(h.rooms))
 	copy(out, h.rooms)
 	return out
@@ -42,6 +54,9 @@ func (h *Hospital) Rooms() []*Room {
 
 // AddRoom registra una sala. No se permiten números repetidos.
 func (h *Hospital) AddRoom(r *Room) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	if r == nil {
 		return fmt.Errorf("%w: room is nil", ErrInvalidRoom)
 	}
@@ -56,6 +71,9 @@ func (h *Hospital) AddRoom(r *Room) error {
 
 // AdmitPatient ingresa un paciente. No se admite dos veces el mismo id.
 func (h *Hospital) AdmitPatient(p *Patient) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	if p == nil {
 		return ErrNilPatient
 	}
@@ -92,6 +110,13 @@ func (h *Hospital) isAdmitted(p *Patient) bool {
 // paciente a AsleepInBed. Si no hay sala, devuelve ErrNoRoomAvailable y el
 // paciente sigue en AsleepInHallway: no hay panic ni sala inventada.
 func (h *Hospital) AssignRoom(p *Patient) (*Room, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.assignRoom(p)
+}
+
+// assignRoom es AssignRoom sin tomar el lock: lo usan los métodos que ya lo tienen.
+func (h *Hospital) assignRoom(p *Patient) (*Room, error) {
 	if p == nil {
 		return nil, ErrNilPatient
 	}
@@ -117,6 +142,9 @@ func (h *Hospital) AssignRoom(p *Patient) (*Room, error) {
 // PatientsInHallway (5.1) devuelve los pacientes dormidos en un pasillo,
 // en el orden en que fueron admitidos, para despachar a un camillero.
 func (h *Hospital) PatientsInHallway() []*Patient {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	var result []*Patient
 	for _, p := range h.patients {
 		if p.State() == AsleepInHallway {
@@ -137,6 +165,9 @@ func (h *Hospital) PatientsInHallway() []*Patient {
 // Nota: history representa la jornada actual del hospital, por eso se cuentan
 // todos los episodios registrados.
 func (h *Hospital) SevereReport() map[*Patient]int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	report := make(map[*Patient]int)
 	for _, p := range h.patients {
 		if p.Level() == Severe {
@@ -166,6 +197,13 @@ func (h *Hospital) nextEpisodeID() string {
 // pacientes admitidos en este hospital, para que SevereReport no cuente
 // episodios de gente que no es de aquí.
 func (h *Hospital) RegisterEpisode(ep EpisodeRecord) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.registerEpisode(ep)
+}
+
+// registerEpisode es RegisterEpisode sin tomar el lock.
+func (h *Hospital) registerEpisode(ep EpisodeRecord) error {
 	if ep.patient == nil {
 		return ErrNilPatient
 	}
@@ -186,6 +224,9 @@ type hireable interface{ setHospital(h *Hospital) }
 
 // Hire contrata a un miembro del personal. No se contrata dos veces el mismo id.
 func (h *Hospital) Hire(a Attender) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	if a == nil {
 		return fmt.Errorf("%w: attender is nil", ErrInvalidStaff)
 	}
@@ -208,21 +249,47 @@ func (h *Hospital) Hire(a Attender) error {
 // ErrNoStaffAvailable. Si no hay sala, el episodio igual se registra y el error
 // devuelto envuelve ErrNoRoomAvailable.
 func (h *Hospital) DispatchSleepAttack(p *Patient, location string) (EpisodeRecord, error) {
+	attender := h.pickAttender()
+	if attender == nil {
+		return EpisodeRecord{}, ErrNoStaffAvailable
+	}
+	// Se atiende SIN el lock tomado: Attend lo toma por dentro.
+	return attender.Attend(p, location)
+}
+
+// pickAttender elige al siguiente disponible en round-robin, o nil si nadie lo está.
+func (h *Hospital) pickAttender() Attender {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	n := len(h.staff)
 	for i := 0; i < n; i++ {
 		idx := (h.nextStaff + i) % n
 		if h.staff[idx].Available() {
 			h.nextStaff = (idx + 1) % n
-			return h.staff[idx].Attend(p, location)
+			return h.staff[idx]
 		}
 	}
-	return EpisodeRecord{}, ErrNoStaffAvailable
+	return nil
+}
+
+// WakeUp despierta al paciente tomando el lock del hospital, porque liberar la
+// sala modifica estado compartido (úsese en lugar de Patient.WakeUp cuando
+// varios pacientes se simulan a la vez).
+func (h *Hospital) WakeUp(p *Patient) error {
+	if p == nil {
+		return ErrNilPatient
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return p.WakeUp()
 }
 
 // handleSleepAttack es la lógica común de Doctor.Attend y Orderly.Attend:
 // duerme al paciente, intenta asignarle sala y registra el episodio.
 // Si no hay sala devuelve el episodio (sin sala) junto con ErrNoRoomAvailable.
 func (h *Hospital) handleSleepAttack(by Attender, p *Patient, location string) (EpisodeRecord, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	if p == nil {
 		return EpisodeRecord{}, ErrNilPatient
 	}
@@ -233,12 +300,12 @@ func (h *Hospital) handleSleepAttack(by Attender, p *Patient, location string) (
 		return EpisodeRecord{}, err
 	}
 	where := p.Location() // ya normalizada por SufferSleepAttack
-	room, roomErr := h.AssignRoom(p)
+	room, roomErr := h.assignRoom(p)
 	if roomErr != nil && !errors.Is(roomErr, ErrNoRoomAvailable) {
 		return EpisodeRecord{}, roomErr
 	}
 	ep := newEpisodeRecord(h.nextEpisodeID(), p, by, where, room)
-	if err := h.RegisterEpisode(ep); err != nil {
+	if err := h.registerEpisode(ep); err != nil {
 		return EpisodeRecord{}, err
 	}
 	return ep, roomErr

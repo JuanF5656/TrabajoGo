@@ -3,6 +3,7 @@ package hospital
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
 
 // Attender es cualquier miembro del personal que puede atender un episodio.
@@ -22,8 +23,8 @@ type Attender interface {
 type Doctor struct {
 	Person
 	specialty string
-	hospital  *Hospital // se asigna al contratarlo con Hospital.Hire
-	available bool
+	hospital  *Hospital   // se asigna al contratarlo con Hospital.Hire
+	available atomic.Bool // atómico: se puede cambiar mientras el hospital despacha
 }
 
 // NewDoctor valida los datos y crea un doctor disponible.
@@ -37,7 +38,9 @@ func NewDoctor(id, name string, age int, specialty string) (*Doctor, error) {
 	if strings.TrimSpace(specialty) == "" {
 		return nil, fmt.Errorf("%w: specialty is required", ErrInvalidStaff)
 	}
-	return &Doctor{Person: newPerson(id, name, age), specialty: specialty, available: true}, nil
+	d := &Doctor{Person: newPerson(id, name, age), specialty: specialty}
+	d.available.Store(true)
+	return d, nil
 }
 
 // Specialty devuelve la especialidad del doctor.
@@ -64,10 +67,10 @@ func (d *Doctor) AttendSleepEmergency(p *Patient) error {
 }
 
 // Available indica si el doctor puede atender un nuevo episodio.
-func (d *Doctor) Available() bool { return d.available }
+func (d *Doctor) Available() bool { return d.available.Load() }
 
 // SetAvailable marca al doctor como disponible o no (por ejemplo, en descanso).
-func (d *Doctor) SetAvailable(v bool) { d.available = v }
+func (d *Doctor) SetAvailable(v bool) { d.available.Store(v) }
 
 // setHospital lo llama Hospital.Hire al contratar al doctor.
 func (d *Doctor) setHospital(h *Hospital) { d.hospital = h }
@@ -87,6 +90,8 @@ func (d *Doctor) MyEpisodes() []EpisodeRecord {
 	if d.hospital == nil {
 		return mine
 	}
+	d.hospital.mu.Lock()
+	defer d.hospital.mu.Unlock()
 	for _, ep := range d.hospital.history {
 		if ep.attendedBy == Attender(d) {
 			mine = append(mine, ep)

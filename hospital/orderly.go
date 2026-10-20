@@ -3,14 +3,15 @@ package hospital
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
 
 // Orderly es un camillero: lleva al paciente dormido a una sala. A propósito
 // NO tiene DiagnosePatient: solo los doctores pueden diagnosticar.
 type Orderly struct {
 	Person
-	hospital  *Hospital // se asigna al contratarlo con Hospital.Hire
-	available bool
+	hospital  *Hospital   // se asigna al contratarlo con Hospital.Hire
+	available atomic.Bool // atómico: se puede cambiar mientras el hospital despacha
 }
 
 // NewOrderly valida los datos y crea un camillero disponible.
@@ -21,14 +22,16 @@ func NewOrderly(id, name string, age int) (*Orderly, error) {
 	if age < 0 {
 		return nil, fmt.Errorf("%w: age %d is negative", ErrInvalidStaff, age)
 	}
-	return &Orderly{Person: newPerson(id, name, age), available: true}, nil
+	o := &Orderly{Person: newPerson(id, name, age)}
+	o.available.Store(true)
+	return o, nil
 }
 
 // Available indica si el camillero puede atender un nuevo episodio.
-func (o *Orderly) Available() bool { return o.available }
+func (o *Orderly) Available() bool { return o.available.Load() }
 
 // SetAvailable marca al camillero como disponible o no.
-func (o *Orderly) SetAvailable(v bool) { o.available = v }
+func (o *Orderly) SetAvailable(v bool) { o.available.Store(v) }
 
 // setHospital lo llama Hospital.Hire al contratar al camillero.
 func (o *Orderly) setHospital(h *Hospital) { o.hospital = h }
