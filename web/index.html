@@ -1,0 +1,441 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital de los Costeños</title>
+
+    <style>
+        :root {
+            --primary: #087f8c;
+            --primary-dark: #06636d;
+            --background: #f3f7f9;
+            --surface: #ffffff;
+            --text: #18323a;
+            --muted: #71838a;
+            --border: #e1e9ec;
+            --green: #16845b;
+            --orange: #bd6c16;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: var(--background);
+            color: var(--text);
+        }
+
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            background: var(--primary);
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 24px;
+        }
+
+        h1 {
+            font-size: 21px;
+            margin: 0;
+        }
+
+        .subtitle {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 5px;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 24px;
+        }
+
+        .welcome {
+            margin-bottom: 24px;
+        }
+
+        .welcome h2 {
+            margin: 0 0 8px;
+            font-size: 28px;
+        }
+
+        .welcome p {
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            margin-bottom: 28px;
+        }
+
+        .card, .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px;
+        }
+
+        .stat-label {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-top: 12px;
+        }
+
+        .section-title {
+            font-size: 19px;
+            margin: 0 0 18px;
+        }
+
+        .panel {
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+
+        .panel-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 15px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th, td {
+            padding: 14px 12px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        th {
+            color: var(--muted);
+            font-weight: 600;
+            background: #f8fafb;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status {
+            display: inline-block;
+            border-radius: 20px;
+            padding: 5px 10px;
+            background: #e4f5ed;
+            color: var(--green);
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .warning {
+            background: #fff0df;
+            color: var(--orange);
+        }
+
+        .muted {
+            color: var(--muted);
+        }
+
+        #message {
+            margin-bottom: 18px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        @media (max-width: 700px) {
+            header {
+                padding: 16px;
+            }
+
+            main {
+                padding: 0 14px;
+            }
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .welcome h2 {
+                font-size: 23px;
+            }
+
+            .panel {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="brand">
+            <div class="brand-icon">✚</div>
+            <div>
+                <h1>Hospital de los Costeños</h1>
+                <div class="subtitle">Sistema de gestión hospitalaria</div>
+            </div>
+        </div>
+
+        <button id="refreshButton">Actualizar datos</button>
+    </header>
+
+    <main>
+        <section class="welcome">
+            <h2>Panel de control</h2>
+            <p>Resumen de pacientes, habitaciones y atención hospitalaria.</p>
+        </section>
+
+        <div id="message">Conectando con el servidor...</div>
+
+        <section class="stats">
+            <div class="card">
+                <div class="stat-label">Pacientes registrados</div>
+                <div class="stat-value" id="patientCount">—</div>
+            </div>
+
+            <div class="card">
+                <div class="stat-label">Habitaciones ocupadas</div>
+                <div class="stat-value" id="occupiedCount">—</div>
+            </div>
+
+            <div class="card">
+                <div class="stat-label">Episodios graves registrados</div>
+                <div class="stat-value" id="severeCount">—</div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-heading">
+                <h3 class="section-title">Pacientes</h3>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Edad</th>
+                            <th>Nivel</th>
+                            <th>Estado</th>
+                            <th>Ubicación</th>
+                            <th>Habitación</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientsTable">
+                        <tr><td colspan="7">Cargando pacientes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel-heading">
+                <h3 class="section-title">Habitaciones</h3>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Estado</th>
+                            <th>Ocupación</th>
+                            <th>Pacientes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="roomsTable">
+                        <tr><td colspan="4">Cargando habitaciones...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="panel">
+            <h3 class="section-title">Reporte de pacientes graves</h3>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Paciente</th>
+                            <th>ID</th>
+                            <th>Episodios registrados</th>
+                        </tr>
+                    </thead>
+                    <tbody id="severeTable">
+                        <tr><td colspan="3">Cargando reporte...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        Hospital de los Costeños con Narcolepsia · Proyecto académico en Go
+    </footer>
+
+    <script>
+        const escapeHTML = (value) =>
+            String(value ?? "").replace(/[&<>"']/g, (character) => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            })[character]);
+
+        function statusBadge(value) {
+            const text = String(value ?? "Desconocido");
+            const normalized = text.toLowerCase();
+
+            const warning =
+                normalized.includes("asleep") ||
+                normalized.includes("hallway") ||
+                normalized.includes("sleep") ||
+                normalized.includes("pasillo") ||
+                normalized.includes("dormid");
+
+            return `<span class="status ${warning ? "warning" : ""}">
+                ${escapeHTML(text)}
+            </span>`;
+        }
+
+        async function loadDashboard() {
+            const message = document.getElementById("message");
+            message.textContent = "Actualizando información...";
+
+            try {
+                const response = await fetch("/api/dashboard");
+
+                if (!response.ok) {
+                    throw new Error("El servidor devolvió un error.");
+                }
+
+                const data = await response.json();
+
+                document.getElementById("patientCount").textContent =
+                    data.patients.length;
+
+                document.getElementById("occupiedCount").textContent =
+                    data.rooms.filter(room => room.occupied > 0).length;
+
+                document.getElementById("severeCount").textContent =
+                    data.severe.reduce(
+                        (total, patient) => total + patient.episodes, 0
+                    );
+
+                document.getElementById("patientsTable").innerHTML =
+                    data.patients.map(patient => `
+                        <tr>
+                            <td>${escapeHTML(patient.id)}</td>
+                            <td>${escapeHTML(patient.name)}</td>
+                            <td>${escapeHTML(patient.age)}</td>
+                            <td>${escapeHTML(patient.level)}</td>
+                            <td>${statusBadge(patient.state)}</td>
+                            <td>${escapeHTML(patient.location)}</td>
+                            <td>${patient.roomNumber
+                                ? escapeHTML(patient.roomNumber)
+                                : "Sin habitación"}</td>
+                        </tr>
+                    `).join("") ||
+                    '<tr><td colspan="7">No hay pacientes registrados.</td></tr>';
+
+                document.getElementById("roomsTable").innerHTML =
+                    data.rooms.map(room => `
+                        <tr>
+                            <td>${escapeHTML(room.number)}</td>
+                            <td>${statusBadge(room.state)}</td>
+                            <td>${room.occupied} / ${room.capacity}</td>
+                            <td>${escapeHTML(room.patientNames.join(", ") || "Vacía")}</td>
+                        </tr>
+                    `).join("") ||
+                    '<tr><td colspan="4">No hay habitaciones registradas.</td></tr>';
+
+                document.getElementById("severeTable").innerHTML =
+                    data.severe.map(patient => `
+                        <tr>
+                            <td>${escapeHTML(patient.name)}</td>
+                            <td>${escapeHTML(patient.id)}</td>
+                            <td>${patient.episodes}</td>
+                        </tr>
+                    `).join("") ||
+                    '<tr><td colspan="3">No hay episodios graves registrados.</td></tr>';
+
+                message.textContent =
+                    "Información cargada correctamente. " +
+                    "Última actualización: " + new Date().toLocaleTimeString();
+
+            } catch (error) {
+                message.textContent =
+                    "No fue posible cargar los datos. " +
+                    "Verifica que el servidor Go esté ejecutándose.";
+                console.error(error);
+            }
+        }
+
+        document.getElementById("refreshButton")
+            .addEventListener("click", loadDashboard);
+
+        loadDashboard();
+    </script>
+</body>
+</html>

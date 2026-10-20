@@ -199,6 +199,10 @@ func main() {
 	printEpisodes(orderly.Name(), orderly.MyEpisodes())
 
 	fmt.Println("\n--- Fin de la demostración ---")
+
+	if err := startWeb(h); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func printEpisodes(name string, episodes []hospital.EpisodeRecord) {
