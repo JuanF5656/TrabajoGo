@@ -18,8 +18,14 @@ func newPerson(id, name string, age int) Person {
 	return Person{id: id, name: name, age: age}
 }
 
+<<<<<<< HEAD
 // Receivers por valor: Person es pequeño y estos métodos solo leen.
 // Así funcionan igual sobre Person, *Person, Patient y *Patient.
+=======
+func NewPerson(id, name string, age int) Person {
+	return newPerson(id, name, age)
+}
+>>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 
 // ID devuelve el identificador de la persona.
 func (p Person) ID() string { return p.id }

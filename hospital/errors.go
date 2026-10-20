@@ -2,10 +2,13 @@ package hospital
 
 import "errors"
 
+<<<<<<< HEAD
 // Errores centinela del paquete. Se comparan con errors.Is, así que quien
 // llama puede distinguir "no hay sala" de "sala llena" sin comparar textos.
 // Cuando hace falta contexto (qué paciente, qué sala) se envuelven con
 // fmt.Errorf("...: %w", ErrX).
+=======
+>>>>>>> c91238a5490f43666b1dd45b296ebedcdf3ba81d
 var (
 	ErrNilPatient             = errors.New("patient is nil")
 	ErrInvalidPatient         = errors.New("invalid patient data")
