@@ -22,7 +22,8 @@
      9. Carnival .... modo simulación: ataques aleatorios desde el navegador
     10. Episodes ... episodios (texto del backend -> datos) y línea de tiempo
     11. Queries .... consultas 5.1 a 5.4 en pestañas, con barras CSS
-    12. Arranque .... refresh() y conexión de los botones
+    12. Extras ..... tema claro/oscuro/auto, sonido (Web Audio) y bienvenida
+    13. Arranque .... refresh() y conexión de los botones
    ===================================================================== */
 
 /* =====================================================================
@@ -1124,7 +1125,153 @@ const Queries = {
 };
 
 /* =====================================================================
-   12. ARRANQUE — refresh() es el único sitio que lee del servidor
+   EXTRAS — tema, sonido y pantalla de bienvenida
+   ===================================================================== */
+
+// Tema: "auto" (sigue al sistema), "light" o "dark". Se guarda en localStorage.
+// En CSS, :root[data-theme="dark"] o "light" fuerza el tema; sin atributo manda
+// la preferencia del sistema (prefers-color-scheme).
+const Theme = {
+  KEY: "hospital-theme",
+  mode: "auto",
+
+  init() {
+    const saved = Safe.get(this.KEY);
+    this.mode = saved === "light" || saved === "dark" ? saved : "auto";
+    this.apply();
+    for (const btn of document.querySelectorAll("#theme-seg [data-theme-value]")) {
+      btn.addEventListener("click", () => { this.mode = btn.dataset.themeValue; this.apply(); Safe.set(this.KEY, this.mode); });
+    }
+  },
+
+  apply() {
+    if (this.mode === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", this.mode);
+    for (const btn of document.querySelectorAll("#theme-seg [data-theme-value]")) {
+      btn.setAttribute("aria-checked", String(btn.dataset.themeValue === this.mode));
+    }
+  },
+};
+
+// Sonido: un "ronquido" sintetizado con Web Audio (osciladores y ruido), sin archivos.
+// Está apagado por defecto y solo se crea el AudioContext al activarlo: los
+// navegadores exigen un gesto del usuario antes de permitir audio.
+const Sound = {
+  on: false,
+  ctx: null,
+  noise: null,
+  prev: new Map(),         // id -> último estado visto, para detectar "se acaba de dormir"
+
+  init() {
+    $("#sound-btn").addEventListener("click", () => this.toggle());
+    this.paint();
+  },
+
+  toggle() {
+    this.on = !this.on;
+    if (this.on) {
+      try {
+        if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        this.ctx.resume();
+        this.snore();                                   // una muestra para que se note que funciona
+      } catch (_) {
+        this.on = false;
+        Toast.show("warn", "Este navegador no permite reproducir sonido.");
+      }
+    }
+    this.paint();
+  },
+
+  paint() {
+    const btn = $("#sound-btn");
+    btn.setAttribute("aria-pressed", String(this.on));
+    btn.setAttribute("aria-label", this.on ? "Apagar el sonido de ronquidos" : "Activar el sonido de ronquidos (apagado)");
+    btn.classList.toggle("on", this.on);
+    btn.replaceChildren(icon(this.on ? "sound" : "mute"), el("span", { text: this.on ? "Sonido activado" : "Sonido apagado" }));
+  },
+
+  // Llamado en cada refresh: si alguien pasó de Awake a dormido, suena un ronquido.
+  detect(patients) {
+    let fell = false;
+    for (const p of patients) {
+      if (this.prev.get(p.id) === "Awake" && p.state !== "Awake") fell = true;
+      this.prev.set(p.id, p.state);
+    }
+    if (fell) this.snore();
+  },
+
+  snore() {
+    if (!this.on || !this.ctx) return;
+    const ctx = this.ctx, t0 = ctx.currentTime + 0.03;
+
+    // Inhalar: diente de sierra grave que baja de tono, con temblor (LFO) y filtro pasa-bajos.
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(64, t0);
+    osc.frequency.linearRampToValueAtTime(46, t0 + 1.1);
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 24;
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.value = 0.05;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 360;
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0.0001, t0);
+    amp.gain.linearRampToValueAtTime(0.14, t0 + 0.45);          // sube...
+    amp.gain.linearRampToValueAtTime(0.0001, t0 + 1.1);         // ...y baja suave
+    lfo.connect(lfoDepth); lfoDepth.connect(amp.gain);
+    osc.connect(filter); filter.connect(amp); amp.connect(ctx.destination);
+    osc.start(t0); lfo.start(t0); osc.stop(t0 + 1.2); lfo.stop(t0 + 1.2);
+
+    // Exhalar: un "shhh" de ruido filtrado.
+    if (!this.noise) {
+      this.noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+      const data = this.noise.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise;
+    const band = ctx.createBiquadFilter();
+    band.type = "bandpass"; band.frequency.value = 520; band.Q.value = 0.7;
+    const breath = ctx.createGain();
+    breath.gain.setValueAtTime(0.0001, t0 + 1.1);
+    breath.gain.linearRampToValueAtTime(0.05, t0 + 1.4);
+    breath.gain.linearRampToValueAtTime(0.0001, t0 + 2.0);
+    src.connect(band); band.connect(breath); breath.connect(ctx.destination);
+    src.start(t0 + 1.1); src.stop(t0 + 2.1);
+  },
+};
+
+// Bienvenida: tarjeta a pantalla completa que se cierra sola, con el botón o con Escape.
+const Welcome = {
+  timer: 0,
+
+  init() {
+    const box = $("#welcome");
+    // Mientras está abierta, lo de atrás no se puede usar con el teclado (atributo inert).
+    for (const sel of [".top", "main"]) $(sel).setAttribute("inert", "");
+    $("#welcome-btn").addEventListener("click", () => this.close());
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !box.hidden) this.close(); });
+    $("#welcome-btn").focus();
+    this.timer = setTimeout(() => this.close(), reducedMotion() ? 1500 : 2800);
+  },
+
+  close() {
+    clearTimeout(this.timer);
+    const box = $("#welcome");
+    if (box.hidden) return;
+    for (const sel of [".top", "main"]) $(sel).removeAttribute("inert");
+    const done = () => { box.hidden = true; };
+    if (reducedMotion()) { done(); return; }
+    box.classList.add("leaving");
+    box.addEventListener("transitionend", done, { once: true });
+    setTimeout(done, 700);                              // por si no llega el transitionend
+  },
+};
+
+/* =====================================================================
+   13. ARRANQUE — refresh() es el único sitio que lee del servidor
    ===================================================================== */
 async function refresh() {
   try {
@@ -1134,6 +1281,7 @@ async function refresh() {
     Store.seedZones(state.patients);
 
     document.title = state.hospital;
+    Sound.detect(state.patients);              // ¿alguien se acaba de dormir? -> ronquido (si el sonido está activo)
     Plan.update(state.patients, state.rooms);
     Panel.renderStaff(state.staff);
     Episodes.ingest(queries);
@@ -1146,6 +1294,9 @@ async function refresh() {
   }
 }
 
+Theme.init();
+Sound.init();
+Welcome.init();
 Plan.init();
 Carnival.init();
 Queries.init();

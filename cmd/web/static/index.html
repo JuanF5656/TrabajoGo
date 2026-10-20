@@ -6,6 +6,10 @@
   <meta name="color-scheme" content="light dark">
   <title>Hospital de los Costeños con Narcolepsia</title>
   <link rel="stylesheet" href="style.css">
+  <script>
+    /* Aplica el tema guardado antes del primer dibujo (evita el parpadeo). localStorage puede fallar. */
+    try { var t = localStorage.getItem("hospital-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) { /* sin tema guardado */ }
+  </script>
 </head>
 <body>
   <!-- Sprite de íconos: cada <symbol> se usa desde JS con <use href="#i-nombre"> -->
@@ -34,6 +38,20 @@
       <symbol id="i-cross" viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></symbol>
     </defs>
   </svg>
+
+  <!-- Pantalla de bienvenida: se cierra sola en unos segundos, con botón o con Escape -->
+  <div id="welcome" class="welcome" role="dialog" aria-modal="true" aria-labelledby="welcome-title" aria-describedby="welcome-desc">
+    <div class="welcome-card">
+      <span class="logo" aria-hidden="true"><svg class="ico"><use href="#i-cross"/></svg></span>
+      <h2 id="welcome-title">Hospital de los Costeños con Narcolepsia</h2>
+      <p id="welcome-desc">Bienvenido. Aquí cada siesta repentina tiene su cama.</p>
+      <button id="welcome-btn" class="btn" type="button">Entrar</button>
+    </div>
+    <svg class="welcome-waves" viewBox="0 0 1200 80" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <path class="ww1" d="M0 40 C 150 10 300 70 450 40 S 750 10 900 40 S 1100 70 1200 38 V80 H0Z"/>
+      <path class="ww2" d="M0 52 C 200 30 350 76 600 50 S 1000 28 1200 54 V80 H0Z"/>
+    </svg>
+  </div>
 
   <a class="skip" href="#plan-title">Saltar al plano del hospital</a>
 
@@ -76,6 +94,14 @@
         </div>
       </div>
       <div class="top-actions">
+        <div class="seg" id="theme-seg" role="radiogroup" aria-label="Tema de color">
+          <button type="button" role="radio" aria-checked="true" data-theme-value="auto" aria-label="Tema automático (según el sistema)"><svg class="ico" aria-hidden="true"><use href="#i-auto"/></svg><span>Auto</span></button>
+          <button type="button" role="radio" aria-checked="false" data-theme-value="light" aria-label="Tema claro"><svg class="ico" aria-hidden="true"><use href="#i-sun"/></svg><span>Claro</span></button>
+          <button type="button" role="radio" aria-checked="false" data-theme-value="dark" aria-label="Tema oscuro"><svg class="ico" aria-hidden="true"><use href="#i-moon"/></svg><span>Oscuro</span></button>
+        </div>
+        <button id="sound-btn" type="button" class="btn ghost" aria-pressed="false" aria-label="Activar el sonido de ronquidos (apagado)">
+          <svg class="ico" aria-hidden="true"><use href="#i-mute"/></svg><span>Sonido</span>
+        </button>
         <button id="reset-btn" type="button" class="btn ghost" aria-label="Reiniciar el escenario del hospital">
           <svg class="ico" aria-hidden="true"><use href="#i-reset"/></svg><span>Reiniciar</span>
         </button>
