@@ -16,7 +16,6 @@ func mustPatient(t *testing.T, id, name string, level NarcolepsyLevel) *Patient 
 	return p
 }
 
-
 func newTestHospital(t *testing.T, nRooms int, patients ...*Patient) *Hospital {
 	t.Helper()
 	h := NewHospital("Hospital de prueba")
@@ -36,7 +35,6 @@ func newTestHospital(t *testing.T, nRooms int, patients ...*Patient) *Hospital {
 	}
 	return h
 }
-
 
 func TestAssignRoom_FreeRoom(t *testing.T) {
 	p := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
@@ -63,7 +61,6 @@ func TestAssignRoom_FreeRoom(t *testing.T) {
 	}
 }
 
-
 func TestAssignRoom_NoRoomAvailable(t *testing.T) {
 	p1 := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
 	p2 := mustPatient(t, "P-002", "Wilfrido Berrio", Severe)
@@ -89,7 +86,6 @@ func TestAssignRoom_NoRoomAvailable(t *testing.T) {
 		t.Errorf("location changed to %q", p2.Location())
 	}
 }
-
 
 func TestAssignRoom_AfterWakeUpReleasesRoom(t *testing.T) {
 	p1 := mustPatient(t, "P-001", "Yeimy Padilla", Severe)
@@ -158,14 +154,12 @@ func TestPatientsInHallway(t *testing.T) {
 	}
 }
 
-
 func TestSevereReport(t *testing.T) {
 	mild := mustPatient(t, "P-001", "Mild", Mild)
 	s1 := mustPatient(t, "P-002", "Severe uno", Severe)
 	s2 := mustPatient(t, "P-003", "Severe dos", Severe)
 	h := newTestHospital(t, 0, mild, s1, s2)
 
-	
 	h.history = []EpisodeRecord{
 		{patient: s1}, {patient: s1}, {patient: s1},
 		{patient: mild},

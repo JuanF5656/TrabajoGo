@@ -12,6 +12,10 @@ type Orderly struct {
 	episodes []EpisodeRecord
 }
 
+func (o *Orderly) Available() bool {
+	return o != nil && o.hospital != nil
+}
+
 // NewOrderly crea un camillero asociado al hospital.
 func NewOrderly(
 	id string,
@@ -74,7 +78,10 @@ func (o *Orderly) Attend(
 		room:       room,
 	}
 
-	o.hospital.history = append(o.hospital.history, episode)
+	if err := o.hospital.RegisterEpisode(episode); err != nil {
+		return EpisodeRecord{}, err
+	}
+
 	o.episodes = append(o.episodes, episode)
 
 	return episode, roomErr

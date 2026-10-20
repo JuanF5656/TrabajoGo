@@ -27,6 +27,10 @@ type Doctor struct {
 	hospital *Hospital
 }
 
+func (d *Doctor) Available() bool {
+	return d != nil && d.hospital != nil
+}
+
 func (d *Doctor) MyEpisodes() []EpisodeRecord {
 	result := make([]EpisodeRecord, len(d.episodes))
 	copy(result, d.episodes)
@@ -103,7 +107,10 @@ func (d *Doctor) Attend(
 
 	// Registra el episodio en el historial general del hospital
 	// y en el historial particular del doctor.
-	d.hospital.history = append(d.hospital.history, episode)
+	if err := d.hospital.RegisterEpisode(episode); err != nil {
+		return EpisodeRecord{}, err
+	}
+
 	d.episodes = append(d.episodes, episode)
 
 	return episode, roomErr
