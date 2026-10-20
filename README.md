@@ -72,3 +72,45 @@ una búsqueda por clave, que es lo que hace un mapa (`map[*Patient]int`):
 
 Un mapa no tiene orden, por eso `main` ordena a los pacientes por ID antes de
 imprimir y la salida es siempre la misma.
+
+## Interfaz web (bonus)
+
+Una interfaz gráfica en el navegador, sin dependencias externas ni internet
+(`net/http`, `encoding/json`, `embed`, `sync`).
+
+```
+go run ./cmd/web              # y abrir http://localhost:8080
+go run ./cmd/web -addr :9000  # otro puerto
+```
+
+`go run .` sigue imprimiendo el escenario por consola; el `main.go` de la raíz no cambió.
+
+### Endpoints
+
+| Método | Ruta | Qué hace |
+|--------|------|----------|
+| GET  | `/api/state` | Hospital, pacientes, salas y personal (Doctor u Orderly por type switch) |
+| GET  | `/api/queries` | Consultas 5.1 (pasillo), 5.2 (episodios por doctor), 5.3 (última asignación) y 5.4 (SevereReport ordenado por ID) |
+| POST | `/api/attack` `{"patientId","location"}` | `DispatchSleepAttack` (despacho polimórfico) |
+| POST | `/api/wakeup` `{"patientId"}` | Despierta al paciente |
+| POST | `/api/assign` `{"patientId"}` | `AssignRoom`; 409 si no hay sala |
+| POST | `/api/reset` | Reconstruye el escenario inicial |
+
+Los errores salen como `{"error": "..."}`: 400 datos inválidos, 404 paciente inexistente,
+409 conflictos (no hay sala, ya dormido, ya despierto). El código se elige con
+`errors.Is` sobre los errores centinela del paquete `hospital`. Un ataque sin sala
+responde 200 con un `warning`, porque el episodio sí quedó registrado.
+
+### Por qué el paquete hospital no cambió
+
+La regla era separar lógica y vista. El paquete `hospital` no importa `net/http` ni
+`encoding/json` y no sabe que existe una web; la web solo llama a su API pública.
+
+- Los objetos del dominio nunca se serializan directo: `cmd/web/api.go` los convierte a
+  DTOs con tags `json`, así cambiar la pantalla no obliga a tocar el dominio.
+- Lo que el paquete no expone (la lista de doctores para `MyEpisodes`) lo guarda la capa
+  web cuando crea el escenario.
+- Los handlers HTTP corren en goroutines distintas, por eso todo acceso al hospital va
+  dentro de un `sync.Mutex` del servidor web (el mutex interno del hospital no cubre
+  secuencias de varias llamadas).
+- Se comprueba con `git diff --stat HEAD -- hospital/`, que no muestra cambios.

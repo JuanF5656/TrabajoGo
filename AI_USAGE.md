@@ -12,6 +12,15 @@ verificar desde el historial de git o desde la sesión de trabajo está marcado 
     completo y `EpisodeRecord`;
   - reescribir `main.go` para que siga la sección 6;
   - restaurar comentarios, escribir tests nuevos, el README y este documento.
+- **Claude Code — interfaz web (bonus).** Se usó para escribir `cmd/web` (servidor
+  `net/http`, DTOs JSON, página con HTML/CSS/JS, tests con `httptest`). La instrucción
+  fue explícita: no modificar nada dentro de `hospital/` y resolver las carencias en la
+  capa web. Lo que faltaba (el paquete no expone la lista de doctores) se resolvió
+  guardando las referencias en el servidor web. Se verificó con `git diff --stat HEAD --
+  hospital/`, que no mostró cambios. Se probó a mano con `curl` (4 ataques, 409 sin sala,
+  despertar y reasignar) antes de escribir los tests. Límite: en la máquina de trabajo no
+  hay compilador C, así que `-race` no se pudo ejecutar ahí; hay que correrlo en otro
+  equipo y no se debe afirmar que pasó sin haberlo hecho.
 - [COMPLETAR: otras herramientas de IA que usaron antes (por ejemplo, para el commit
   "Describe lo que cambiaste" o para la parte de Persona A), y para qué.]
 
