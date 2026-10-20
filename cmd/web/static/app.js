@@ -20,7 +20,8 @@
      7. Interact .... clics, doble clic y arrastrar-y-soltar (drag & drop)
      8. FX .......... contadores animados y confeti
      9. Carnival .... modo simulación: ataques aleatorios desde el navegador
-    10. Arranque .... refresh() y conexión de los botones
+    10. Episodes ... episodios (texto del backend -> datos) y línea de tiempo
+    11. Arranque .... refresh() y conexión de los botones
    ===================================================================== */
 
 /* =====================================================================
@@ -392,7 +393,8 @@ const Panel = {
 
   render() {
     const p = Store.selectedId ? Store.patient(Store.selectedId) : null;
-    const sig = p ? [p.id, p.state, p.room, p.location, p.doctor].join("|") : "none";
+    const last = p ? Episodes.lastFor(p.id) : null;
+    const sig = p ? [p.id, p.state, p.room, p.location, p.doctor, last && last.id].join("|") : "none";
     if (sig === this.signature) return;
     this.signature = sig;
 
@@ -421,6 +423,7 @@ const Panel = {
         el("dt", { text: "Ubicación" }), el("dd", { text: p.location || "—" }),
         el("dt", { text: "Sala" }), el("dd", { text: p.room ? "Sala " + p.room : "Sin sala" }),
         el("dt", { text: "Doctor asignado" }), el("dd", { text: p.doctor || "Sin doctor asignado" }),
+        el("dt", { text: "Último episodio" }), el("dd", { text: last ? `${last.id} · atendió ${last.by}` : "Ninguno" }),
       ]),
     ];
 
@@ -485,8 +488,11 @@ const Actions = {
     try {
       const d = await Api.post("/api/attack", { patientId: id, location: zone.name });
       ok = true;
-      if (d.warning) Toast.show("warn", `${p.name} se durmió en ${zone.name} y no hay sala libre: queda en el pasillo. (${d.warning})`);
-      else Toast.show("ok", `${p.name} se durmió en ${zone.name}. ${d.episode}`);
+      // El ataque devuelve el episodio completo (también los de camilleros): se anota para la línea de tiempo.
+      const ep = Episodes.record(d.episode, new Date());
+      const detail = ep ? `${ep.id}, atendió ${ep.by}` : d.episode;
+      if (d.warning) Toast.show("warn", `${p.name} se durmió en ${zone.name} y no hay sala libre: queda en el pasillo. (${detail}; ${d.warning})`);
+      else Toast.show("ok", `${p.name} se durmió en ${zone.name} y quedó en la sala ${ep && ep.room ? ep.room : "?"}. (${detail})`);
     } catch (err) {
       Store.zoneOf.set(id, before);                  // no pasó: vuelve a donde estaba
       Toast.show("error", err.message);
@@ -546,6 +552,7 @@ const Actions = {
   async reset() {
     try {
       Carnival.stop();                         // si el carnaval estaba corriendo, se detiene
+      Episodes.clear();
       await Api.post("/api/reset");
       Store.reset();
       Toast.show("info", "Escenario reiniciado.");
@@ -695,9 +702,9 @@ const Counters = {
     };
   },
 
-  // Episodios del día: suma lo que cada doctor reporta en MyEpisodes (5.2).
+  // Episodios del día (ver Episodes.count: incluye los de camilleros).
   episodeCount() {
-    return Store.queries.episodesByDoctor.reduce((n, d) => n + d.episodes.length, 0);
+    return Episodes.count();
   },
 
   update() {
@@ -862,7 +869,109 @@ const Carnival = {
 };
 
 /* =====================================================================
-   9. ARRANQUE — refresh() es el único sitio que lee del servidor
+   EPISODIOS y LÍNEA DE TIEMPO
+   El backend solo entrega cada episodio como texto (EpisodeRecord.Summary):
+       "EP-001: P-001 Yeimy Padilla at Cafetería, attended by Dra. Salcedo -> room 101"
+   Aquí se descompone ese texto para dibujarlo bonito. Limitaciones, a propósito:
+   - La API no manda la hora: se usa la del momento en que esta pantalla vio el episodio.
+   - Los episodios que atendió un CAMILLERO no aparecen en las consultas (MyEpisodes
+     es solo de doctores). Se conocen si el ataque se hizo desde esta pantalla, y si
+     no, se deduce que existen porque falta un número en la serie (EP-001, EP-003...).
+   ===================================================================== */
+const Episodes = {
+  byId: new Map(),         // "EP-001" -> { id, n, patientId, patientName, place, by, room, time }
+  RE: /^(EP-(\d+)): (P-\d+) (.+?) at (.+?), attended by (.+?) -> (.+)$/,
+
+  parse(summary) {
+    const m = this.RE.exec(String(summary));
+    if (!m) return null;
+    const room = /^room (\d+)/.exec(m[7]);
+    return { id: m[1], n: Number(m[2]), patientId: m[3], patientName: m[4], place: m[5], by: m[6], room: room ? Number(room[1]) : null, time: null };
+  },
+
+  // Guarda un episodio (si no se conocía) y lo devuelve.
+  record(summary, when) {
+    const e = this.parse(summary);
+    if (!e) return null;
+    if (!this.byId.has(e.id)) {
+      e.time = when || new Date();
+      this.byId.set(e.id, e);
+    }
+    return this.byId.get(e.id);
+  },
+
+  // Aprende los episodios de los doctores que vienen en /api/queries (consulta 5.2).
+  ingest(queries) {
+    for (const d of queries.episodesByDoctor) for (const s of d.episodes) this.record(s);
+  },
+
+  maxN() { let m = 0; for (const e of this.byId.values()) m = Math.max(m, e.n); return m; },
+  // Total del día: el número más alto visto cubre también a los de camilleros (huecos).
+  count() { return Math.max(this.byId.size, this.maxN()); },
+
+  lastFor(patientId) {
+    let best = null;
+    for (const e of this.byId.values()) if (e.patientId === patientId && (!best || e.n > best.n)) best = e;
+    return best;
+  },
+
+  clear() {
+    this.byId.clear();
+    Timeline.rendered.clear();
+  },
+};
+
+const Timeline = {
+  rendered: new Set(),     // ids ya dibujados: solo los nuevos reciben la animación de entrada
+
+  render() {
+    const list = $("#timeline");
+    const max = Episodes.count();
+    if (!max) {
+      list.replaceChildren(el("li", { cls: "tl-empty", text: "Todavía no hay episodios. Provoca un ataque de sueño." }));
+      return;
+    }
+    const items = [];
+    for (let n = max; n >= 1; n--) {                       // de más reciente a más antiguo
+      const id = "EP-" + String(n).padStart(3, "0");
+      const e = Episodes.byId.get(id);
+      items.push(e ? this.item(e) : this.gap(id));
+    }
+    list.replaceChildren(...items);
+  },
+
+  item(e) {
+    const isNew = !this.rendered.has(e.id);
+    this.rendered.add(e.id);
+    const clock = e.time.toLocaleTimeString("es-CO", { hour12: false });
+    const where = e.room ? "Sala " + e.room : "Pasillo";
+    return el("li", { cls: "tl-item " + (e.room ? "tl-bed" : "tl-hall") + (isNew ? " enter" : "") }, [
+      el("span", { cls: "tl-dot", attrs: { "aria-hidden": "true" } }),
+      el("div", { cls: "tl-body" }, [
+        el("div", { cls: "tl-top" }, [
+          el("time", { text: clock, attrs: { datetime: e.time.toISOString() } }),
+          el("span", { cls: "badge b-info", text: e.id }),
+        ]),
+        el("div", { cls: "tl-title", text: `${e.patientName} (${e.patientId})` }),
+        el("div", { cls: "tl-meta", text: `Atendió ${e.by} · en ${e.place} · ${where}` }),
+      ]),
+    ]);
+  },
+
+  // Número que falta en la serie: lo atendió un camillero y la API no lo detalla.
+  gap(id) {
+    return el("li", { cls: "tl-item tl-gap" }, [
+      el("span", { cls: "tl-dot", attrs: { "aria-hidden": "true" } }),
+      el("div", { cls: "tl-body" }, [
+        el("div", { cls: "tl-top" }, [el("span", { cls: "badge b-warn", text: id })]),
+        el("div", { cls: "tl-meta", text: "Atendido por un camillero (la API no entrega el detalle)." }),
+      ]),
+    ]);
+  },
+};
+
+/* =====================================================================
+   11. ARRANQUE — refresh() es el único sitio que lee del servidor
    ===================================================================== */
 async function refresh() {
   try {
@@ -874,8 +983,10 @@ async function refresh() {
     document.title = state.hospital;
     Plan.update(state.patients, state.rooms);
     Panel.renderStaff(state.staff);
+    Episodes.ingest(queries);
     Interact.sync();
     Counters.update();
+    Timeline.render();
   } catch (err) {
     Toast.show("error", "No se pudo cargar el estado: " + err.message);
   }

@@ -506,3 +506,35 @@ select, input[type="text"] {
 .speed input[type="range"]::-moz-range-thumb {
   width: 16px; height: 16px; border-radius: 50%; background: var(--sun); border: 3px solid var(--night);
 }
+
+/* =====================================================================
+   9. Línea de tiempo y zona inferior (timeline + consultas)
+   ===================================================================== */
+.lower { display: grid; gap: 16px; margin-top: 16px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (min-width: 980px) { .lower { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+
+.timeline {
+  list-style: none; margin: 0; padding: 4px 6px 4px 2px; max-height: 440px; overflow-y: auto;
+  position: relative; border-radius: 12px;
+}
+.timeline::before {                               /* el riel vertical */
+  content: ""; position: absolute; left: 11px; top: 14px; bottom: 14px; width: 3px; border-radius: 3px;
+  background: linear-gradient(var(--sea), var(--sun), var(--coral)); opacity: .55;
+}
+.tl-item { position: relative; display: flex; gap: 14px; padding: 6px 0 10px; }
+.tl-dot {
+  position: relative; z-index: 1; flex: none; width: 17px; height: 17px; margin: 4px 0 0 3px; border-radius: 50%;
+  background: var(--sea); border: 3px solid var(--bg); box-shadow: 0 0 0 2px var(--sea);
+}
+.tl-hall .tl-dot { background: var(--coral); box-shadow: 0 0 0 2px var(--coral); }
+.tl-gap .tl-dot { background: var(--sun); box-shadow: 0 0 0 2px var(--sun); }
+.tl-body {
+  flex: 1; min-width: 0; padding: 8px 12px; border-radius: 12px;
+  background: var(--field-bg); border: 1px solid var(--glass-border);
+}
+.tl-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .78rem; color: var(--muted); }
+.tl-title { font-weight: 700; margin-top: 2px; overflow-wrap: anywhere; }
+.tl-meta { font-size: .86rem; color: var(--muted); overflow-wrap: anywhere; }
+.tl-empty { color: var(--muted); padding: 10px 6px; }
+.tl-item.enter { animation: tl-in .55s cubic-bezier(.2, .9, .3, 1.1); }
+@keyframes tl-in { from { opacity: 0; transform: translateY(-16px) scale(.97); } to { opacity: 1; transform: none; } }
