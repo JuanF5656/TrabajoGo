@@ -21,19 +21,46 @@ type Attender interface {
 // Doctor es un médico del hospital. Embebe Person (id, nombre, edad).
 type Doctor struct {
 	Person
+	specialty string
 	hospital  *Hospital // se asigna al contratarlo con Hospital.Hire
 	available bool
 }
 
 // NewDoctor valida los datos y crea un doctor disponible.
-func NewDoctor(id, name string, age int) (*Doctor, error) {
+func NewDoctor(id, name string, age int, specialty string) (*Doctor, error) {
 	if strings.TrimSpace(id) == "" || strings.TrimSpace(name) == "" {
 		return nil, fmt.Errorf("%w: id and name are required", ErrInvalidStaff)
 	}
 	if age < 0 {
 		return nil, fmt.Errorf("%w: age %d is negative", ErrInvalidStaff, age)
 	}
-	return &Doctor{Person: newPerson(id, name, age), available: true}, nil
+	if strings.TrimSpace(specialty) == "" {
+		return nil, fmt.Errorf("%w: specialty is required", ErrInvalidStaff)
+	}
+	return &Doctor{Person: newPerson(id, name, age), specialty: specialty, available: true}, nil
+}
+
+// Specialty devuelve la especialidad del doctor.
+func (d *Doctor) Specialty() string { return d.specialty }
+
+// DiagnosePatient deja al doctor como médico asignado del paciente.
+// Solo existe en Doctor: el camillero no puede diagnosticar.
+func (d *Doctor) DiagnosePatient(p *Patient) error {
+	if p == nil {
+		return ErrNilPatient
+	}
+	p.assignDoctor(d)
+	return nil
+}
+
+// AttendSleepEmergency atiende una emergencia de sueño en el lugar donde está
+// el paciente. Reutiliza Attend y descarta el registro: devuelve solo el error.
+func (d *Doctor) AttendSleepEmergency(p *Patient) error {
+	if p == nil {
+		return ErrNilPatient
+	}
+	_, err := d.Attend(p, p.Location())
+	return err
 }
 
 // Available indica si el doctor puede atender un nuevo episodio.

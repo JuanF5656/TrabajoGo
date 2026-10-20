@@ -9,8 +9,8 @@ import (
 func main() {
 	h := hospital.NewHospital("Hospital de los Costeños con Narcolepsia")
 
-	d1, _ := hospital.NewDoctor("D-001", "Dra. Salcedo", 45)
-	d2, _ := hospital.NewDoctor("D-002", "Dr. Mendoza", 38)
+	d1, _ := hospital.NewDoctor("D-001", "Dra. Salcedo", 45, "Neurologia")
+	d2, _ := hospital.NewDoctor("D-002", "Dr. Mendoza", 38, "Medicina del sueño")
 	o1, _ := hospital.NewOrderly("O-001", "Camillero Pacheco", 30)
 	for _, a := range []hospital.Attender{d1, o1, d2} {
 		if err := h.Hire(a); err != nil {
