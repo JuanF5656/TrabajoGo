@@ -271,3 +271,181 @@ func TestStateStrings(t *testing.T) {
 		}
 	}
 }
+
+// --- Personal y despacho polimórfico ---
+
+func mustDoctor(t *testing.T, h *Hospital, id string) *Doctor {
+	t.Helper()
+	d, err := NewDoctor(id, "Doctor "+id, 40, "Neurologia")
+	if err != nil {
+		t.Fatalf("NewDoctor(%s): %v", id, err)
+	}
+	if err := h.Hire(d); err != nil {
+		t.Fatalf("Hire(%s): %v", id, err)
+	}
+	return d
+}
+
+func mustOrderly(t *testing.T, h *Hospital, id string) *Orderly {
+	t.Helper()
+	o, err := NewOrderly(id, "Camillero "+id, 30)
+	if err != nil {
+		t.Fatalf("NewOrderly(%s): %v", id, err)
+	}
+	if err := h.Hire(o); err != nil {
+		t.Fatalf("Hire(%s): %v", id, err)
+	}
+	return o
+}
+
+func TestDispatchSleepAttack_UsesDoctorAndOrderly(t *testing.T) {
+	p1 := mustPatient(t, "P-001", "A", Severe)
+	p2 := mustPatient(t, "P-002", "B", Mild)
+	h := newTestHospital(t, 2, p1, p2)
+	mustDoctor(t, h, "D-001")
+	mustOrderly(t, h, "O-001")
+
+	var doctors, orderlies int
+	for i, p := range []*Patient{p1, p2} {
+		ep, err := h.DispatchSleepAttack(p, "place "+p.ID())
+		if err != nil {
+			t.Fatalf("attack %d: %v", i, err)
+		}
+		// El test sí mira el tipo concreto; el hospital no lo necesita.
+		switch ep.AttendedBy().(type) {
+		case *Doctor:
+			doctors++
+		case *Orderly:
+			orderlies++
+		default:
+			t.Fatalf("unexpected attender type %T", ep.AttendedBy())
+		}
+	}
+	if doctors != 1 || orderlies != 1 {
+		t.Errorf("round-robin should use both: doctors=%d orderlies=%d", doctors, orderlies)
+	}
+}
+
+func TestDispatchSleepAttack_NoStaffAvailable(t *testing.T) {
+	p := mustPatient(t, "P-001", "A", Severe)
+	h := newTestHospital(t, 1, p)
+
+	if _, err := h.DispatchSleepAttack(p, "cafeteria"); !errors.Is(err, ErrNoStaffAvailable) {
+		t.Fatalf("empty staff: got %v", err)
+	}
+
+	d := mustDoctor(t, h, "D-001")
+	d.SetAvailable(false)
+	if _, err := h.DispatchSleepAttack(p, "cafeteria"); !errors.Is(err, ErrNoStaffAvailable) {
+		t.Fatalf("unavailable staff: got %v", err)
+	}
+	if p.State() != Awake {
+		t.Errorf("patient must stay Awake when nobody attends, got %s", p.State())
+	}
+}
+
+func TestDoctorMyEpisodes_OnlyOwn(t *testing.T) {
+	var ps []*Patient
+	for _, id := range []string{"P-001", "P-002", "P-003"} {
+		ps = append(ps, mustPatient(t, id, id, Mild))
+	}
+	h := newTestHospital(t, 3, ps...)
+	d1 := mustDoctor(t, h, "D-001")
+	d2 := mustDoctor(t, h, "D-002")
+
+	for _, p := range ps {
+		if _, err := h.DispatchSleepAttack(p, "somewhere"); err != nil {
+			t.Fatalf("attack %s: %v", p.ID(), err)
+		}
+	}
+	// Round-robin con 2 doctores: d1 atiende P-001 y P-003, d2 atiende P-002.
+	if got := d1.MyEpisodes(); len(got) != 2 {
+		t.Fatalf("d1 episodes = %d, want 2", len(got))
+	}
+	mine := d2.MyEpisodes()
+	if len(mine) != 1 || mine[0].Patient() != ps[1] {
+		t.Fatalf("d2 should only have P-002's episode, got %v", mine)
+	}
+	for _, ep := range d1.MyEpisodes() {
+		if ep.AttendedBy() != Attender(d1) {
+			t.Errorf("episode %s not attended by d1", ep.ID())
+		}
+	}
+}
+
+func TestRegisterEpisode_RejectsNotAdmitted(t *testing.T) {
+	admitted := mustPatient(t, "P-001", "A", Mild)
+	outsider := mustPatient(t, "P-999", "Outsider", Severe)
+	h := newTestHospital(t, 0, admitted)
+
+	if err := h.RegisterEpisode(EpisodeRecord{patient: outsider}); !errors.Is(err, ErrPatientNotAdmitted) {
+		t.Errorf("not admitted: got %v", err)
+	}
+	if err := h.RegisterEpisode(EpisodeRecord{}); !errors.Is(err, ErrNilPatient) {
+		t.Errorf("nil patient: got %v", err)
+	}
+	if len(h.history) != 0 {
+		t.Errorf("history must stay empty, has %d", len(h.history))
+	}
+	if err := h.RegisterEpisode(EpisodeRecord{patient: admitted}); err != nil {
+		t.Errorf("admitted patient: got %v", err)
+	}
+}
+
+func TestOrderlyCannotDiagnose(t *testing.T) {
+	h := NewHospital("Hospital de prueba")
+	var a Attender = mustOrderly(t, h, "O-001")
+	if _, ok := a.(interface{ DiagnosePatient(*Patient) error }); ok {
+		t.Error("Orderly must not have DiagnosePatient")
+	}
+	var d Attender = mustDoctor(t, h, "D-001")
+	if _, ok := d.(interface{ DiagnosePatient(*Patient) error }); !ok {
+		t.Error("Doctor must have DiagnosePatient")
+	}
+}
+
+func TestSevereReport_FullScenarioReassignedCountsOnce(t *testing.T) {
+	p1 := mustPatient(t, "P-001", "A", Severe)
+	p2 := mustPatient(t, "P-002", "B", Severe)
+	h := newTestHospital(t, 1, p1, p2)
+	mustDoctor(t, h, "D-001")
+	mustOrderly(t, h, "O-001")
+
+	if _, err := h.DispatchSleepAttack(p1, "cafeteria"); err != nil {
+		t.Fatalf("first attack: %v", err)
+	}
+	if _, err := h.DispatchSleepAttack(p2, "parking"); !errors.Is(err, ErrNoRoomAvailable) {
+		t.Fatalf("second attack should lack a room, got %v", err)
+	}
+	if err := p1.WakeUp(); err != nil {
+		t.Fatalf("WakeUp: %v", err)
+	}
+	// Reasignación directa, sin un segundo Attend: no crea un episodio falso.
+	if _, err := h.AssignRoom(p2); err != nil {
+		t.Fatalf("reassign: %v", err)
+	}
+
+	report := h.SevereReport()
+	if report[p2] != 1 {
+		t.Errorf("reassigned patient episodes = %d, want 1", report[p2])
+	}
+	if report[p1] != 1 {
+		t.Errorf("first patient episodes = %d, want 1", report[p1])
+	}
+}
+
+func TestDoctorAttendSleepEmergency(t *testing.T) {
+	p := mustPatient(t, "P-001", "A", Severe)
+	h := newTestHospital(t, 1, p)
+	d := mustDoctor(t, h, "D-001")
+
+	if err := d.AttendSleepEmergency(p); err != nil {
+		t.Fatalf("AttendSleepEmergency: %v", err)
+	}
+	if p.State() != AsleepInBed || len(d.MyEpisodes()) != 1 {
+		t.Errorf("state=%s episodes=%d", p.State(), len(d.MyEpisodes()))
+	}
+	if d.Specialty() != "Neurologia" {
+		t.Errorf("specialty = %q", d.Specialty())
+	}
+}
