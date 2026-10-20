@@ -21,7 +21,8 @@
      8. FX .......... contadores animados y confeti
      9. Carnival .... modo simulación: ataques aleatorios desde el navegador
     10. Episodes ... episodios (texto del backend -> datos) y línea de tiempo
-    11. Arranque .... refresh() y conexión de los botones
+    11. Queries .... consultas 5.1 a 5.4 en pestañas, con barras CSS
+    12. Arranque .... refresh() y conexión de los botones
    ===================================================================== */
 
 /* =====================================================================
@@ -971,7 +972,159 @@ const Timeline = {
 };
 
 /* =====================================================================
-   11. ARRANQUE — refresh() es el único sitio que lee del servidor
+   CONSULTAS 5.1 a 5.4 — en pestañas (patrón ARIA "tabs")
+   Los datos vienen de GET /api/queries; aquí solo se presentan.
+   Teclado: flechas izquierda/derecha, Inicio y Fin cambian de pestaña.
+   ===================================================================== */
+const Queries = {
+  TABS: [
+    { id: "q51", label: "5.1 Pasillo", title: "5.1 Pacientes dormidos en el pasillo" },
+    { id: "q52", label: "5.2 Por doctor", title: "5.2 Episodios atendidos por cada doctor" },
+    { id: "q53", label: "5.3 Asignación", title: "5.3 Asignación de sala (la última)" },
+    { id: "q54", label: "5.4 Severidad", title: "5.4 Reporte de severidad" },
+  ],
+  active: "q51",
+  tabEls: new Map(),
+  panelEls: new Map(),
+  barKey: "",              // ids de pacientes de las barras ya dibujadas
+  bars: new Map(),         // id de paciente -> { fill, count }
+
+  init() {
+    const tablist = $("#query-tabs");
+    const panels = $("#query-panels");
+    for (const t of this.TABS) {
+      const tab = el("button", {
+        cls: "tab", text: t.label,
+        attrs: { type: "button", role: "tab", id: "tab-" + t.id, "aria-controls": "panel-" + t.id },
+      });
+      tab.addEventListener("click", () => this.select(t.id));
+      tab.addEventListener("keydown", (e) => this.onKey(e, t.id));
+      const panel = el("div", { cls: "q-panel", attrs: { role: "tabpanel", id: "panel-" + t.id, "aria-labelledby": "tab-" + t.id, tabindex: "0" } });
+      this.tabEls.set(t.id, tab);
+      this.panelEls.set(t.id, panel);
+      tablist.append(tab);
+      panels.append(panel);
+    }
+    this.select(this.active);
+  },
+
+  select(id, focus = false) {
+    this.active = id;
+    for (const t of this.TABS) {
+      const on = t.id === id;
+      const tab = this.tabEls.get(t.id);
+      tab.setAttribute("aria-selected", String(on));
+      tab.tabIndex = on ? 0 : -1;                    // solo la pestaña activa entra en el orden de Tab
+      this.panelEls.get(t.id).hidden = !on;
+    }
+    if (focus) this.tabEls.get(id).focus();
+  },
+
+  onKey(e, id) {
+    const i = this.TABS.findIndex((t) => t.id === id);
+    let next = null;
+    if (e.key === "ArrowRight") next = (i + 1) % this.TABS.length;
+    else if (e.key === "ArrowLeft") next = (i - 1 + this.TABS.length) % this.TABS.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = this.TABS.length - 1;
+    if (next === null) return;
+    e.preventDefault();
+    this.select(this.TABS[next].id, true);
+  },
+
+  render(q) {
+    this.render51(q.hallway);
+    this.render52(q.episodesByDoctor);
+    this.render53(q.lastAssignment);
+    this.render54(q.severeReport);
+  },
+
+  heading(id) { return el("h3", { cls: "q-title", text: this.TABS.find((t) => t.id === id).title }); },
+
+  // 5.1 — quiénes están dormidos en un pasillo (PatientsInHallway)
+  render51(hallway) {
+    const body = hallway.length
+      ? el("ul", { cls: "q-list" }, hallway.map((p) => el("li", {}, [
+          el("span", { cls: "q-who", text: `${p.name} (${p.id})` }),
+          el("span", { cls: "badge b-lvl-" + p.level.toLowerCase(), text: p.level }),
+          el("span", { cls: "q-note", text: "en " + p.location }),
+        ])))
+      : el("p", { cls: "q-empty", text: "Nadie está dormido en el pasillo." });
+    this.panelEls.get("q51").replaceChildren(this.heading("q51"), body);
+  },
+
+  // 5.2 — episodios de cada doctor (MyEpisodes)
+  render52(byDoctor) {
+    const cards = byDoctor.map((d) => {
+      const items = d.episodes.map((s) => {
+        const e = Episodes.parse(s);
+        return el("li", { text: e ? `${e.id} · ${e.patientName} · ${e.place} · ${e.room ? "Sala " + e.room : "Pasillo"}` : s });
+      });
+      return el("div", { cls: "q-card" }, [
+        el("h4", { text: `Atendidos por ${d.doctorName}` }),
+        items.length ? el("ul", {}, items) : el("p", { cls: "q-empty", text: "Sin episodios todavía." }),
+      ]);
+    });
+    this.panelEls.get("q52").replaceChildren(this.heading("q52"), ...cards);
+  },
+
+  // 5.3 — resultado de la última asignación de sala que se pidió desde esta pantalla
+  render53(last) {
+    const body = last
+      ? el("div", { cls: "q-card" }, [
+          el("p", {}, [
+            el("span", { cls: "badge " + (last.ok ? "b-ok" : "b-bad"), text: last.ok ? "Éxito" : "Sin sala" }),
+            " ", el("strong", { text: "Paciente " + last.patientId }),
+          ]),
+          el("p", { text: last.message }),
+        ])
+      : el("p", { cls: "q-empty", text: "Todavía no se ha pedido ninguna asignación de sala." });
+    this.panelEls.get("q53").replaceChildren(this.heading("q53"), body);
+  },
+
+  // 5.4 — barras horizontales hechas con CSS: el ancho de cada barra es un porcentaje.
+  render54(report) {
+    const panel = this.panelEls.get("q54");
+    if (!report.length) {
+      panel.replaceChildren(this.heading("q54"), el("p", { cls: "q-empty", text: "No hay pacientes Severe." }));
+      this.barKey = "";
+      return;
+    }
+    const max = Math.max(1, ...report.map((r) => r.episodes));
+    const key = report.map((r) => r.id).join(",");
+
+    if (key !== this.barKey) {                        // primera vez (o cambió el grupo): se arman las filas
+      this.barKey = key;
+      this.bars.clear();
+      const rows = report.map((r) => {
+        const fill = el("span", { cls: "bar-fill" });
+        const count = el("span", { cls: "bar-count" });
+        this.bars.set(r.id, { fill, count });
+        return el("div", { cls: "bar-row" }, [
+          el("span", { cls: "bar-name", text: `${r.name} (${r.id})` }),
+          el("span", { cls: "bar-track", attrs: { "aria-hidden": "true" } }, [fill]),
+          count,
+        ]);
+      });
+      panel.replaceChildren(this.heading("q54"), ...rows);
+      requestAnimationFrame(() => requestAnimationFrame(() => this.paintBars(report, max)));   // así la barra "crece"
+    } else {
+      this.paintBars(report, max);
+    }
+  },
+
+  paintBars(report, max) {
+    for (const r of report) {
+      const b = this.bars.get(r.id);
+      if (!b) continue;
+      b.fill.style.width = (r.episodes / max) * 100 + "%";
+      b.count.textContent = r.episodes + (r.episodes === 1 ? " episodio" : " episodios");
+    }
+  },
+};
+
+/* =====================================================================
+   12. ARRANQUE — refresh() es el único sitio que lee del servidor
    ===================================================================== */
 async function refresh() {
   try {
@@ -987,6 +1140,7 @@ async function refresh() {
     Interact.sync();
     Counters.update();
     Timeline.render();
+    Queries.render(queries);
   } catch (err) {
     Toast.show("error", "No se pudo cargar el estado: " + err.message);
   }
@@ -994,5 +1148,6 @@ async function refresh() {
 
 Plan.init();
 Carnival.init();
+Queries.init();
 $("#reset-btn").addEventListener("click", () => Actions.reset());
 refresh();

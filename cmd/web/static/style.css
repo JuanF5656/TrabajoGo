@@ -538,3 +538,40 @@ select, input[type="text"] {
 .tl-empty { color: var(--muted); padding: 10px 6px; }
 .tl-item.enter { animation: tl-in .55s cubic-bezier(.2, .9, .3, 1.1); }
 @keyframes tl-in { from { opacity: 0; transform: translateY(-16px) scale(.97); } to { opacity: 1; transform: none; } }
+
+/* =====================================================================
+   10. Consultas en pestañas y barras de severidad
+   ===================================================================== */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; padding: 4px; border-radius: 14px; background: var(--field-bg); }
+.tab {
+  flex: 1 1 auto; font: inherit; font-weight: 600; font-size: .88rem; cursor: pointer; min-height: 40px;
+  padding: 6px 12px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--muted);
+  transition: background-color .2s, color .2s;
+}
+.tab:hover { color: var(--text); }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--accent-text); }
+
+.q-panel { padding: 2px; border-radius: 12px; }
+.q-panel[hidden] { display: none; }
+.q-title { margin-bottom: 10px; }
+.q-empty { color: var(--muted); margin: 6px 0; }
+.q-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.q-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; border-radius: 12px; background: var(--field-bg); border: 1px solid var(--glass-border); }
+.q-who { font-weight: 700; }
+.q-note { color: var(--muted); font-size: .88rem; }
+.q-card { padding: 10px 14px; margin-bottom: 10px; border-radius: 12px; background: var(--field-bg); border: 1px solid var(--glass-border); }
+.q-card h4 { margin: 0 0 6px; font-size: .95rem; }
+.q-card ul { margin: 0; padding-left: 18px; }
+.q-card li { margin: 3px 0; font-size: .9rem; overflow-wrap: anywhere; }
+.q-card p { margin: 4px 0; overflow-wrap: anywhere; }
+
+.bar-row { display: grid; grid-template-columns: minmax(80px, 1.3fr) 3fr auto; align-items: center; gap: 10px; margin: 10px 0; }
+@media (max-width: 480px) { .bar-row { grid-template-columns: 1fr auto; } .bar-track { grid-column: 1 / -1; order: 3; } }
+.bar-name { font-size: .88rem; font-weight: 600; overflow-wrap: anywhere; }
+.bar-track { height: 16px; border-radius: 999px; background: var(--zone-border); overflow: hidden; }
+.bar-fill {
+  display: block; height: 100%; width: 0; border-radius: 999px; min-width: 0;
+  background: linear-gradient(90deg, var(--sea), var(--sun) 60%, var(--coral));
+  transition: width .8s cubic-bezier(.2, .8, .2, 1);
+}
+.bar-count { font-size: .85rem; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 6.5em; text-align: right; }
