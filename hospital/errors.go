@@ -2,7 +2,6 @@ package hospital
 
 import "errors"
 
-
 var (
 	ErrNilPatient             = errors.New("patient is nil")
 	ErrInvalidPatient         = errors.New("invalid patient data")

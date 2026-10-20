@@ -26,13 +26,11 @@ func (r *Room) Number() int      { return r.number }
 func (r *Room) Capacity() int    { return r.capacity }
 func (r *Room) State() RoomState { return r.state }
 
-
 func (r *Room) Occupants() []*Patient {
 	out := make([]*Patient, len(r.occupants))
 	copy(out, r.occupants)
 	return out
 }
-
 
 func (r *Room) IsAvailable() bool {
 	return len(r.occupants) < r.capacity
@@ -77,7 +75,6 @@ func (r *Room) indexOf(p *Patient) int {
 	}
 	return -1
 }
-
 
 func (r *Room) updateState() {
 	if r.IsAvailable() {

@@ -116,7 +116,6 @@ func (h *Hospital) PatientsInHallway() []*Patient {
 	return result
 }
 
-
 func (h *Hospital) SevereReport() map[*Patient]int {
 	report := make(map[*Patient]int)
 	for _, p := range h.patients {
@@ -130,4 +129,29 @@ func (h *Hospital) SevereReport() map[*Patient]int {
 		}
 	}
 	return report
+}
+
+// ---------------------------------------------------------------------
+// Historial de episodios
+// ---------------------------------------------------------------------
+
+// nextEpisodeID genera el siguiente id ("EP-001", "EP-002", ...). Vive aquí
+// y no en Doctor ni en Orderly para que la numeración tenga un solo dueño:
+// el hospital, que es quien guarda el historial.
+func (h *Hospital) nextEpisodeID() string {
+	return fmt.Sprintf("EP-%03d", len(h.history)+1)
+}
+
+// RegisterEpisode agrega un episodio al historial. Solo acepta episodios de
+// pacientes admitidos en este hospital, para que SevereReport no cuente
+// episodios de gente que no es de aquí.
+func (h *Hospital) RegisterEpisode(ep EpisodeRecord) error {
+	if ep.patient == nil {
+		return ErrNilPatient
+	}
+	if !h.isAdmitted(ep.patient) {
+		return fmt.Errorf("%w: %s", ErrPatientNotAdmitted, ep.patient.ID())
+	}
+	h.history = append(h.history, ep)
+	return nil
 }
