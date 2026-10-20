@@ -1,1 +1,53 @@
-<!doctype html><title>Hospital</title>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hospital de los Costeños con Narcolepsia</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <h1 id="hospital-name">Hospital</h1>
+    <button id="reset-btn" type="button" class="secondary">Reiniciar escenario</button>
+  </header>
+
+  <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+
+  <main>
+    <section aria-labelledby="rooms-title">
+      <h2 id="rooms-title">Salas</h2>
+      <div id="rooms" class="rooms"></div>
+    </section>
+
+    <section aria-labelledby="patients-title">
+      <h2 id="patients-title">Pacientes</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Nombre</th><th>Edad</th><th>Nivel</th><th>Estado</th>
+              <th>Ubicación</th><th>Sala</th><th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="patients"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="two-col">
+      <section aria-labelledby="staff-title">
+        <h2 id="staff-title">Personal</h2>
+        <ul id="staff" class="plain"></ul>
+      </section>
+
+      <section aria-labelledby="queries-title">
+        <h2 id="queries-title">Consultas</h2>
+        <div id="queries"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
