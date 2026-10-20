@@ -12,6 +12,7 @@ usando solo la librería estándar.
 
 ```
 go run .          # corre el escenario de la sección 6
+go run . -sim     # bonus: simulación concurrente (salida distinta en cada corrida)
 go test ./...     # corre los tests del paquete hospital
 ```
 
@@ -53,6 +54,9 @@ hospital/
 - **Reasignar sala no crea episodios.** Cuando alguien se despierta, el paciente del
   pasillo recibe sala con `AssignRoom` directo. Un segundo `Attend` crearía un
   episodio falso y alteraría el `SevereReport`.
+- **Concurrencia (bonus).** `Hospital` tiene un `sync.Mutex`. Los métodos públicos lo
+  toman y los internos (`assignRoom`, `registerEpisode`) no, porque el mutex no es
+  reentrante y se bloquearía a sí mismo. `simulation.go` lanza un paciente por goroutine.
 - **Encapsulamiento.** `Patients()`, `Rooms()` y `Occupants()` devuelven copias.
 
 ## Por qué un mapa en SevereReport
