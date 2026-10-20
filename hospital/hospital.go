@@ -5,29 +5,35 @@ import (
 	"fmt"
 )
 
+// Hospital es la raíz del modelo: conoce a sus pacientes, salas, personal
+// e historial de episodios. Todos los campos son privados.
 type Hospital struct {
 	name      string
-	staff     []Attender // Persona B: doctores y camilleros, despachados por interfaz
+	staff     []Attender // doctores y camilleros, despachados por la interfaz Attender
 	patients  []*Patient
 	rooms     []*Room
-	history   []EpisodeRecord // todos los episodios registrados (Persona B los agrega)
+	history   []EpisodeRecord // todos los episodios registrados
 	nextStaff int             // índice (round-robin) desde donde DispatchSleepAttack busca personal
 }
 
+// NewHospital crea un hospital vacío.
 func NewHospital(name string) *Hospital {
 	return &Hospital{name: name}
 }
 
+// Name devuelve el nombre del hospital.
 func (h *Hospital) Name() string { return h.name }
 
 // Patients y Rooms devuelven copias para que main pueda recorrerlos
 // sin poder alterar las listas internas del hospital.
+// Patients devuelve una copia de los pacientes admitidos.
 func (h *Hospital) Patients() []*Patient {
 	out := make([]*Patient, len(h.patients))
 	copy(out, h.patients)
 	return out
 }
 
+// Rooms devuelve una copia de las salas registradas (ver Patients).
 func (h *Hospital) Rooms() []*Room {
 	out := make([]*Room, len(h.rooms))
 	copy(out, h.rooms)
@@ -120,6 +126,16 @@ func (h *Hospital) PatientsInHallway() []*Patient {
 	return result
 }
 
+// SevereReport (5.4) cruza dos fuentes: los pacientes con nivel Severe y el
+// historial de episodios del hospital. Devuelve paciente -> número de episodios.
+//
+// Por qué un mapa: la consulta es "dado un paciente, ¿cuántos episodios?",
+// que es exactamente una búsqueda por clave. Contar con un mapa es O(n) en una
+// sola pasada; con un slice habría que buscar el paciente en cada episodio.
+// Un paciente Severe sin episodios aparece con 0 (sigue siendo de interés).
+//
+// Nota: history representa la jornada actual del hospital, por eso se cuentan
+// todos los episodios registrados.
 func (h *Hospital) SevereReport() map[*Patient]int {
 	report := make(map[*Patient]int)
 	for _, p := range h.patients {

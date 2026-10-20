@@ -26,12 +26,16 @@ func (r *Room) Number() int      { return r.number }
 func (r *Room) Capacity() int    { return r.capacity }
 func (r *Room) State() RoomState { return r.state }
 
+// Occupants devuelve una COPIA del slice: quien la reciba puede modificarla
+// sin alterar la sala real (si devolviéramos r.occupants, se rompería el
+// encapsulamiento porque el slice comparte el arreglo de fondo).
 func (r *Room) Occupants() []*Patient {
 	out := make([]*Patient, len(r.occupants))
 	copy(out, r.occupants)
 	return out
 }
 
+// IsAvailable indica si queda al menos una cama libre.
 func (r *Room) IsAvailable() bool {
 	return len(r.occupants) < r.capacity
 }
@@ -76,6 +80,8 @@ func (r *Room) indexOf(p *Patient) int {
 	return -1
 }
 
+// updateState mantiene el estado coherente con la ocupación real,
+// así nunca puede quedar "Occupied" con camas libres o al revés.
 func (r *Room) updateState() {
 	if r.IsAvailable() {
 		r.state = Available
